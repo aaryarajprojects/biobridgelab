@@ -1,157 +1,855 @@
-import React, { useState } from 'react';
-import { FlaskConical, AlertCircle, RefreshCw, Activity, Copy, CheckCircle2, HelpCircle, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  FlaskConical, AlertCircle, RefreshCw, Activity, Copy, 
+  CheckCircle2, HelpCircle, Download, BookOpen, Search, 
+  GitCompare, Layers, Info, Sparkles, FileText, Check, ArrowRight,
+  ClipboardList, X
+} from 'lucide-react';
+import { SavedReport, UserProgress } from '../types';
 
-interface AnalysisResult {
-  length: number;
-  counts: {
-    A: number;
-    T: number;
-    G: number;
-    C: number;
-  };
-  gcPercent: number;
-  atPercent: number;
-  complement: string;
-  reverseComplement: string;
+// ============================================================================
+// CODON MAP & REFERENCE DATA
+// ============================================================================
+const CODON_TABLE: Record<string, { name: string; symbol: string; abbrev: string }> = {
+  'TTT': { name: 'Phenylalanine', symbol: 'F', abbrev: 'Phe' },
+  'TTC': { name: 'Phenylalanine', symbol: 'F', abbrev: 'Phe' },
+  'TTA': { name: 'Leucine', symbol: 'L', abbrev: 'Leu' },
+  'TTG': { name: 'Leucine', symbol: 'L', abbrev: 'Leu' },
+  'CTT': { name: 'Leucine', symbol: 'L', abbrev: 'Leu' },
+  'CTC': { name: 'Leucine', symbol: 'L', abbrev: 'Leu' },
+  'CTA': { name: 'Leucine', symbol: 'L', abbrev: 'Leu' },
+  'CTG': { name: 'Leucine', symbol: 'L', abbrev: 'Leu' },
+  'ATT': { name: 'Isoleucine', symbol: 'I', abbrev: 'Ile' },
+  'ATC': { name: 'Isoleucine', symbol: 'I', abbrev: 'Ile' },
+  'ATA': { name: 'Isoleucine', symbol: 'I', abbrev: 'Ile' },
+  'ATG': { name: 'Methionine (Start)', symbol: 'M', abbrev: 'Met (Start)' },
+  'GTT': { name: 'Valine', symbol: 'V', abbrev: 'Val' },
+  'GTC': { name: 'Valine', symbol: 'V', abbrev: 'Val' },
+  'GTA': { name: 'Valine', symbol: 'V', abbrev: 'Val' },
+  'GTG': { name: 'Valine', symbol: 'V', abbrev: 'Val' },
+  'TCT': { name: 'Serine', symbol: 'S', abbrev: 'Ser' },
+  'TCC': { name: 'Serine', symbol: 'S', abbrev: 'Ser' },
+  'TCA': { name: 'Serine', symbol: 'S', abbrev: 'Ser' },
+  'TCG': { name: 'Serine', symbol: 'S', abbrev: 'Ser' },
+  'CCT': { name: 'Proline', symbol: 'P', abbrev: 'Pro' },
+  'CCC': { name: 'Proline', symbol: 'P', abbrev: 'Pro' },
+  'CCA': { name: 'Proline', symbol: 'P', abbrev: 'Pro' },
+  'CCG': { name: 'Proline', symbol: 'P', abbrev: 'Pro' },
+  'ACT': { name: 'Threonine', symbol: 'T', abbrev: 'Thr' },
+  'ACC': { name: 'Threonine', symbol: 'T', abbrev: 'Thr' },
+  'ACA': { name: 'Threonine', symbol: 'T', abbrev: 'Thr' },
+  'ACG': { name: 'Threonine', symbol: 'T', abbrev: 'Thr' },
+  'GCT': { name: 'Alanine', symbol: 'A', abbrev: 'Ala' },
+  'GCC': { name: 'Alanine', symbol: 'A', abbrev: 'Ala' },
+  'GCA': { name: 'Alanine', symbol: 'A', abbrev: 'Ala' },
+  'GCG': { name: 'Alanine', symbol: 'A', abbrev: 'Ala' },
+  'TAT': { name: 'Tyrosine', symbol: 'Y', abbrev: 'Tyr' },
+  'TAC': { name: 'Tyrosine', symbol: 'Y', abbrev: 'Tyr' },
+  'TAA': { name: 'Stop Codon', symbol: '*', abbrev: 'STOP' },
+  'TAG': { name: 'Stop Codon', symbol: '*', abbrev: 'STOP' },
+  'CAT': { name: 'Histidine', symbol: 'H', abbrev: 'His' },
+  'CAC': { name: 'Histidine', symbol: 'H', abbrev: 'His' },
+  'CAA': { name: 'Glutamine', symbol: 'Q', abbrev: 'Gln' },
+  'CAG': { name: 'Glutamine', symbol: 'Q', abbrev: 'Gln' },
+  'AAT': { name: 'Asparagine', symbol: 'N', abbrev: 'Asn' },
+  'AAC': { name: 'Asparagine', symbol: 'N', abbrev: 'Asn' },
+  'AAG': { name: 'Lysine', symbol: 'K', abbrev: 'Lys' },
+  'AAA': { name: 'Lysine', symbol: 'K', abbrev: 'Lys' },
+  'GAT': { name: 'Aspartic Acid', symbol: 'D', abbrev: 'Asp' },
+  'GAC': { name: 'Aspartic Acid', symbol: 'D', abbrev: 'Asp' },
+  'GAA': { name: 'Glutamic Acid', symbol: 'E', abbrev: 'Glu' },
+  'GAG': { name: 'Glutamic Acid', symbol: 'E', abbrev: 'Glu' },
+  'TGT': { name: 'Cysteine', symbol: 'C', abbrev: 'Cys' },
+  'TGC': { name: 'Cysteine', symbol: 'C', abbrev: 'Cys' },
+  'TGA': { name: 'Stop Codon', symbol: '*', abbrev: 'STOP' },
+  'TGG': { name: 'Tryptophan', symbol: 'W', abbrev: 'Trp' },
+  'CGT': { name: 'Arginine', symbol: 'R', abbrev: 'Arg' },
+  'CGC': { name: 'Arginine', symbol: 'R', abbrev: 'Arg' },
+  'CGA': { name: 'Arginine', symbol: 'R', abbrev: 'Arg' },
+  'CGG': { name: 'Arginine', symbol: 'R', abbrev: 'Arg' },
+  'AGT': { name: 'Serine', symbol: 'S', abbrev: 'Ser' },
+  'AGC': { name: 'Serine', symbol: 'S', abbrev: 'Ser' },
+  'AGA': { name: 'Arginine', symbol: 'R', abbrev: 'Arg' },
+  'AGG': { name: 'Arginine', symbol: 'R', abbrev: 'Arg' },
+  'GGT': { name: 'Glycine', symbol: 'G', abbrev: 'Gly' },
+  'GGC': { name: 'Glycine', symbol: 'G', abbrev: 'Gly' },
+  'GGA': { name: 'Glycine', symbol: 'G', abbrev: 'Gly' },
+  'GGG': { name: 'Glycine', symbol: 'G', abbrev: 'Gly' }
+};
+
+interface ReferenceSample {
+  id: string;
+  category: 'Human' | 'Plant' | 'Bacterial';
+  name: string;
+  label: string;
+  description: string;
+  sequence: string;
+  learningObjective: string;
 }
 
-export default function VirtualLab() {
-  const [sequenceInput, setSequenceInput] = useState<string>('');
-  const [errorMsg, setErrorMsg] = useState<string>('');
-  const [sampleLabel, setSampleLabel] = useState<string>('');
+const REFERENCE_LIBRARY: ReferenceSample[] = [
+  {
+    id: 'sample-human-ins',
+    category: 'Human',
+    name: 'Human Insulin Gene (Fragment)',
+    label: 'INS Hormone Segment',
+    description: 'Partial coding sequence of the human insulin (INS) gene on chromosome 11, critical for cellular glucose regulation.',
+    sequence: 'AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG',
+    learningObjective: 'Analyze nucleotide frequencies and trace how translation translates insulin codons into functional therapeutic proteins.'
+  },
+  {
+    id: 'sample-plant-rbcl',
+    category: 'Plant',
+    name: 'Arabidopsis thaliana rbcL Gene (Fragment)',
+    label: 'RuBisCO Photoenzyme Segment',
+    description: 'Chloroplast gene sequence representing the large subunit of RuBisCO, the primary carbon-fixation enzyme on Earth.',
+    sequence: 'ATGTCACCACAAACAGAGACTAAAGCAAGTGTTGGATTCAAAGCTGGTGTTAAAGAGTACAAATTGACTTATTATACTCCTGAATACGAAACCAAGGATACTGATATCTTGGCAGCATTCCGA',
+    learningObjective: 'Examine GC-content distribution and study plant-specific codons responsible for light-harvesting enzymes.'
+  },
+  {
+    id: 'sample-bact-rrd',
+    category: 'Bacterial',
+    name: 'Escherichia coli 16S rRNA Segment',
+    label: 'Bacterial Classification Locus',
+    description: 'A conserved genetic locus from the 16S ribosomal RNA subunit, universally used by bioinformaticians for microbial species identification.',
+    sequence: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAA',
+    learningObjective: 'Analyze structural non-coding RNA sequence compositions where high GC density provides thermodynamic ribosomal stability.'
+  }
+];
+
+interface DatasetPreset {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  seq?: string;
+  seqA?: string;
+  seqB?: string;
+  seqOriginal?: string;
+  seqModified?: string;
+}
+
+const ANALYZER_PRESETS: DatasetPreset[] = [
+  {
+    id: 'analyzer-human-ins',
+    name: 'Human Insulin Gene (Fragment)',
+    category: 'Human',
+    description: 'INS gene segment (GC-rich, highly stable, therapeutic hormone focus).',
+    seq: 'AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG'
+  },
+  {
+    id: 'analyzer-human-hbb',
+    name: 'Human Hemoglobin Beta (HBB)',
+    category: 'Human',
+    description: 'HBB gene normal segment coding for oxygen-binding beta-globin protein.',
+    seq: 'ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTGGTGGTGAGGCCCTGGGCAGG'
+  },
+  {
+    id: 'analyzer-bact-16s',
+    name: 'E. coli 16S rRNA Segment',
+    category: 'Bacterial',
+    description: 'Conserved microbial ribosome identification segment with balanced nucleotide frequency.',
+    seq: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAA'
+  },
+  {
+    id: 'analyzer-plant-rbcl',
+    name: 'Arabidopsis thaliana rbcL Gene',
+    category: 'Plant',
+    description: 'Chloroplast gene of the RuBisCO carbon-fixation enzyme (AT-rich).',
+    seq: 'ATGTCACCACAAACAGAGACTAAAGCAAGTGTTGGATTCAAAGCTGGTGTTAAAGAGTACAAATTGACTTATTATACTCCTGAATACGAAACCAAGGATACTGATATCTTGGCAGCATTCCGA'
+  },
+  {
+    id: 'analyzer-viral-spike',
+    name: 'SARS-CoV-2 Spike Glycoprotein RBD',
+    category: 'Viral',
+    description: 'Part of the S-gene encoding the receptor binding domain of the virus.',
+    seq: 'ATGTTTGTTTTTCTTGTTTTATTGCCACTAGTCTCTAGTCAGTGTGTTAATCTTACAACCAGAACTCAATTACCCCCTGCATACACTAATTCT'
+  }
+];
+
+const COMPARATOR_PRESETS: DatasetPreset[] = [
+  {
+    id: 'comp-hbb-homology',
+    name: 'Hemoglobin Beta: Human vs. Chimpanzee',
+    category: 'Conserved Homology',
+    description: 'Aligns the beta-globin gene between human and chimp, demonstrating 100% sequence identity in this conserved region.',
+    seqA: 'ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTG',
+    seqB: 'ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTG'
+  },
+  {
+    id: 'comp-ins-human-pig',
+    name: 'Insulin (INS): Human vs. Pig',
+    category: 'Inter-species Divergence',
+    description: 'Compares human and swine insulin gene segments, showing evolutionary variations despite identical biological function.',
+    seqA: 'AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG',
+    seqB: 'GCTCTCTACCTGGTGTGCGGGGAGCGTGGCTTCTTCTACACACCCAAGGCCCGTCGGGAGGCAGAGGACCTGCAGGTG'
+  },
+  {
+    id: 'comp-bact-eco-sal',
+    name: '16S rRNA: E. coli vs. Salmonella',
+    category: 'Bacterial Identification',
+    description: 'Compares standard ribosomal identifier sequences, highlighting minor single-nucleotide polymorphisms (SNPs).',
+    seqA: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAAC',
+    seqB: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGACG'
+  }
+];
+
+const MUTATION_PRESETS: DatasetPreset[] = [
+  {
+    id: 'mut-sickle-cell',
+    name: 'Hemoglobin (HBB): Sickle Cell Disease',
+    category: 'Missense Mutation',
+    description: 'Demonstrates the classic A to T point mutation at codon 6 (GAG to GTG), changing Glutamic Acid (E) to Valine (V) and altering red blood cell shape.',
+    seqOriginal: 'ATGGTGCACCTGACTCCTGAGGAGAAG',
+    seqModified: 'ATGGTGCACCTGACTCCTGTGGAGAAG'
+  },
+  {
+    id: 'mut-nonsense-stop',
+    name: 'Beta-Globin: Premature Stop Codon',
+    category: 'Nonsense Mutation',
+    description: 'Demonstrates a point substitution that introduces a STOP codon (GAG to TAG), truncating the synthesized beta-globin protein prematurely.',
+    seqOriginal: 'ATGGTGCACCTGACTCCTGAGGAGAAG',
+    seqModified: 'ATGGTGCACCTGACTCCTTAGGAGAAG'
+  },
+  {
+    id: 'mut-lacz-frameshift',
+    name: 'LacZ Gene: Deletion Frameshift',
+    category: 'Frameshift Mutation',
+    description: 'A single thymine base deletion that corrupts the entire downstream ribosomal reading frame, resulting in an entirely non-functional enzyme.',
+    seqOriginal: 'ATGACCATGATTACGGATTCACTGGCC',
+    seqModified: 'ATGACCATGATACGGATTCACTGGCC'
+  }
+];
+
+const TRANSLATOR_PRESETS: DatasetPreset[] = [
+  {
+    id: 'trans-hgh',
+    name: 'Human Growth Hormone (Fragment)',
+    category: 'Human Hormone',
+    description: 'A partial coding sequence with a clear START codon (ATG) and STOP codon (TAA) to demonstrate complete peptide synthesis.',
+    seq: 'ATGGCTACAGGCTCCCGGACGTCCCTGCTCCTGGCTTTTGGCCTGCTCTGCCTGCCCTGGCTTCAAGAGGGCAGTGCCTAA'
+  },
+  {
+    id: 'trans-yeast-cyc',
+    name: 'Yeast Cytochrome C (CYC1) segment',
+    category: 'Yeast Respiration',
+    description: 'Conserved energy transfer enzyme sequence, useful for examining standard codon redundancy.',
+    seq: 'ATGGGTGTTCCCGCTGGTAAGGAAGGTGTTGGTGCTAAGAAGGGTGCTAACGCTAAGAAGGGTGCTGACGCTAAGAAGTAA'
+  },
+  {
+    id: 'trans-poly-alanine',
+    name: 'Synthetic Poly-Alanine Code',
+    category: 'Synthetic Peptide',
+    description: 'Demonstrates standard triplet codon repetition translating into a clean alanine polypeptide chain.',
+    seq: 'ATGGCTGCCGCCGCCGCCGCCGCCGCCGCCGCCTAA'
+  }
+];
+
+interface DetailedSampleMeta {
+  id: string;
+  name: string;
+  category: 'Human' | 'Plant' | 'Bacterial' | 'Viral' | 'Clinical' | 'Comparative';
+  origin: string;
+  length: string;
+  function: string;
+  scientificContext: string;
+  features: string[];
+  suggestedTool: 'analyzer' | 'comparator' | 'mutation' | 'translator' | 'all';
+  sequenceA: string;
+  sequenceB?: string;
+}
+
+const DETAILED_SAMPLE_METADATA: DetailedSampleMeta[] = [
+  {
+    id: 'ins-human',
+    name: 'Human Insulin Gene Fragment (INS)',
+    category: 'Human',
+    origin: 'Homo sapiens — Chromosome 11p15.5',
+    length: '78 bp',
+    function: 'Codes for preproinsulin, the precursor molecule of insulin. Insulin is the primary peptide hormone responsible for cellular glucose uptake, lipid synthesis, and maintaining glucose homeostasis in the bloodstream.',
+    scientificContext: 'Pancreatic beta cells synthesize and process this peptide. Mutations in the INS gene lead to neonatal diabetes, diabetic ketoacidosis, or hyperproinsulinemia. In bioinformatics, it serves as a high-GC model for peptide hormone translation.',
+    features: ['High GC Content (64%)', 'Thermodynamically Stable Locus', 'Peptide Hormone Expression'],
+    suggestedTool: 'translator',
+    sequenceA: 'AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG'
+  },
+  {
+    id: 'hbb-normal',
+    name: 'Human Hemoglobin Beta (HBB) — Normal',
+    category: 'Human',
+    origin: 'Homo sapiens — Chromosome 11p15.4',
+    length: '93 bp',
+    function: 'Encodes the beta-globin polypeptide subunit of Hemoglobin A, the tetrameric metalloprotein inside red blood cells responsible for oxygen transport from pulmonary alveoli to respiration-active peripheral tissues.',
+    scientificContext: 'Normal adult hemoglobin consists of two alpha and two beta chains. Studying this baseline is essential for understanding clinical hematology, red blood cell mechanics, and oxygen-dissociation curves.',
+    features: ['Adult Hemoglobin Subunit', 'Standard Codon Distribution', 'Oxygen Carrier Template'],
+    suggestedTool: 'analyzer',
+    sequenceA: 'ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTGGTGGTGAGGCCCTGGGCAGG'
+  },
+  {
+    id: 'rbcl-plant',
+    name: 'Arabidopsis thaliana rbcL Gene Fragment',
+    category: 'Plant',
+    origin: 'Arabidopsis thaliana — Chloroplast Genome (Plastid)',
+    length: '122 bp',
+    function: 'Codes for the large subunit of ribulose-1,5-bisphosphate carboxylase/oxygenase (RuBisCO), the catalyst that captures atmospheric CO2 and incorporates it into organic molecules during photosynthesis.',
+    scientificContext: 'RuBisCO is widely regarded as the most abundant enzyme on Earth. The chloroplast-encoded rbcL gene is highly conserved across plant lineages and is used extensively in botanical phylogenetics, plant evolutionary tracking, and chloroplast transformation research.',
+    features: ['AT-Rich Plastid DNA', 'Photosynthetic Enzyme Model', 'Phylogenetic Classification Locus'],
+    suggestedTool: 'analyzer',
+    sequenceA: 'ATGTCACCACAAACAGAGACTAAAGCAAGTGTTGGATTCAAAGCTGGTGTTAAAGAGTACAAATTGACTTATTATACTCCTGAATACGAAACCAAGGATACTGATATCTTGGCAGCATTCCGA'
+  },
+  {
+    id: '16s-bact',
+    name: 'E. coli 16S Ribosomal RNA Segment',
+    category: 'Bacterial',
+    origin: 'Escherichia coli — 16S Ribosomal Operon',
+    length: '120 bp',
+    function: 'A critical structural component of the 30S small ribosomal subunit in prokaryotic organisms, playing a fundamental role in scaffold binding and aligning the mRNA transcript during translation initiation.',
+    scientificContext: 'Because ribosomal RNA is evolutionary ancient and highly constrained, the 16S rRNA gene contains slow-evolving conserved zones and rapid-evolving hypervariable zones. It acts as the standard "barcode" for clinical and ecological microbiome sequencing.',
+    features: ['Ribosomal Non-Coding RNA Locus', 'Prokaryotic Taxonomic Marker', 'Secondary Structure Stability'],
+    suggestedTool: 'analyzer',
+    sequenceA: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAA'
+  },
+  {
+    id: 'sars-spike',
+    name: 'SARS-CoV-2 Spike Protein Receptor Binding Domain',
+    category: 'Viral',
+    origin: 'SARS-CoV-2 — S-Gene RBD Region',
+    length: '93 bp',
+    function: 'Codes for the specific outer domain of the viral spike glycoprotein that physically engages with host human Angiotensin-Converting Enzyme 2 (ACE2) receptors to initiate viral envelope fusion and host cell invasion.',
+    scientificContext: 'This genomic segment is under immense evolutionary pressure, and mutations here directly alter transmissibility and vaccine resistance. It represents a model for structural virology, molecular diagnostics, and immunological antibody target design.',
+    features: ['Rapidly Mutating Target', 'Zoonotic Infection Key', 'Viral Entry Glycoprotein'],
+    suggestedTool: 'analyzer',
+    sequenceA: 'ATGTTTGTTTTTCTTGTTTTATTGCCACTAGTCTCTAGTCAGTGTGTTAATCTTACAACCAGAACTCAATTACCCCCTGCATACACTAATTCT'
+  },
+  {
+    id: 'hbb-chimp-homology',
+    name: 'Hemoglobin Beta: Human vs. Chimpanzee',
+    category: 'Comparative',
+    origin: 'Homo sapiens vs. Pan troglodytes',
+    length: '73 bp',
+    function: 'Examines evolutionary divergence and nucleotide identity. Shows the sequence alignment of the conserved oxygen-carrying beta-chain coding region between humans and chimpanzees.',
+    scientificContext: 'Demonstrates 100% nucleotide sequence identity in this specific active site fragment, proving the close evolutionary proximity of primates and the absolute selective pressure to maintain oxygen transport protein structures.',
+    features: ['100% Sequence Identity', 'Conserved Active Site', 'Primate Lineage Reference'],
+    suggestedTool: 'comparator',
+    sequenceA: 'ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTG',
+    sequenceB: 'ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTG'
+  },
+  {
+    id: 'ins-human-swine',
+    name: 'Insulin Gene: Human vs. Pig',
+    category: 'Comparative',
+    origin: 'Homo sapiens vs. Sus scrofa',
+    length: '78 bp / 77 bp',
+    function: 'Compares insulin gene templates between humans and swine. Pigs synthesize an insulin protein that differs by only a single amino acid from humans, which served as the primary source of pharmaceutical insulin for decades.',
+    scientificContext: 'Highlights "codon wobble" or degeneracy, where mammalian genes exhibit substantial silent nucleotide differences in their DNA templates while maintaining extremely similar amino acid translation products.',
+    features: ['Inter-species Divergence', 'Industrial Therapeutic Source', 'Codon Degeneracy Example'],
+    suggestedTool: 'comparator',
+    sequenceA: 'AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG',
+    sequenceB: 'GCTCTCTACCTGGTGTGCGGGGAGCGTGGCTTCTTCTACACACCCAAGGCCCGTCGGGAGGCAGAGGACCTGCAGGTG'
+  },
+  {
+    id: 'rrna-eco-sal',
+    name: '16S Ribosomal RNA: E. coli vs. Salmonella',
+    category: 'Comparative',
+    origin: 'Escherichia coli vs. Salmonella enterica',
+    length: '60 bp',
+    function: 'Compares highly conserved ribosomal RNA fragments between two closely related enteric Gram-negative bacilli to demonstrate precise microbial species identification.',
+    scientificContext: 'Demonstrates how single-nucleotide polymorphisms (SNPs) in structural RNA are leveraged to distinguish clinical foodborne pathogens (Salmonella) from common, benign gut flora (E. coli).',
+    features: ['Single-Nucleotide Polymorphisms (SNPs)', 'Enteric Pathogen Differentiation', 'Conserved Sequence Comparison'],
+    suggestedTool: 'comparator',
+    sequenceA: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAAC',
+    sequenceB: 'AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGTCGACG'
+  },
+  {
+    id: 'sickle-cell-mut',
+    name: 'Hemoglobin Beta: Sickle Cell Mutation',
+    category: 'Clinical',
+    origin: 'Clinical Variant — Human HBB Codon 6 Missense',
+    length: '27 bp',
+    function: 'An infamous point mutation leading to Sickle Cell Anemia. A single nucleotide transversion from Adenine (A) to Thymine (T) alters a crucial codon in the beta-globin polypeptide.',
+    scientificContext: 'This missense mutation alters the sixth codon from GAG (Glutamic Acid) to GTG (Valine). Glutamic Acid is highly polar, while Valine is hydrophobic. When deoxygenated, the abnormal hemoglobin polymerizes into rigid fibers, distorting red cells into "sickles" that clog microcapillaries.',
+    features: ['Missense Point Mutation', 'Glutamic Acid to Valine (E6V)', 'Vaso-occlusive Clinical Impact'],
+    suggestedTool: 'mutation',
+    sequenceA: 'ATGGTGCACCTGACTCCTGAGGAGAAG',
+    sequenceB: 'ATGGTGCACCTGACTCCTGTGGAGAAG'
+  },
+  {
+    id: 'thalassemia-nonsense',
+    name: 'Beta-Thalassemia Premature Stop Codon',
+    category: 'Clinical',
+    origin: 'Clinical Variant — Human HBB Nonsense Variant',
+    length: '27 bp',
+    function: 'A severe nonsense mutation where a single nucleotide transition converts a normal amino-acid codon into a premature stop codon, terminating protein synthesis.',
+    scientificContext: 'The mutation changes codon 8 from GAG (Glutamic Acid) to TAG (amber Stop Codon). During protein synthesis, the ribosome falls off early, producing a truncated, totally non-functional beta-globin peptide. This causes Beta-Thalassemia Major.',
+    features: ['Nonsense Translation Arrest', 'Premature Termination Codon', 'Beta-Thalassemia Model'],
+    suggestedTool: 'mutation',
+    sequenceA: 'ATGGTGCACCTGACTCCTGAGGAGAAG',
+    sequenceB: 'ATGGTGCACCTGACTCCTTAGGAGAAG'
+  },
+  {
+    id: 'lacz-frameshift-mut',
+    name: 'Beta-Galactosidase (LacZ) Single-Base Deletion',
+    category: 'Clinical',
+    origin: 'Escherichia coli — lacZ Operon Deletion',
+    length: '27 bp / 26 bp',
+    function: 'A single-nucleotide deletion frameshift mutation inside the lactose-hydrolyzing lacZ gene, illustrating absolute loss of protein structure and function.',
+    scientificContext: 'Deleting a single Thymine base shifts the triplet reading frame downstream. Consequently, every subsequent codon is read incorrectly, leading to a scrambled polypeptide chain that typically terminates in a random premature stop codon.',
+    features: ['Frameshift Mutation', 'Single Nucleotide Deletion', 'Total Translation Inactivation'],
+    suggestedTool: 'mutation',
+    sequenceA: 'ATGACCATGATTACGGATTCACTGGCC',
+    sequenceB: 'ATGACCATGATACGGATTCACTGGCC'
+  },
+  {
+    id: 'hgh-fragment',
+    name: 'Human Growth Hormone Segment (HGH)',
+    category: 'Human',
+    origin: 'Homo sapiens — Chromosome 17q23.3',
+    length: '81 bp',
+    function: 'A coding fragment of Somatotropin (Human Growth Hormone), synthesized and secreted by somatotropic cells of the anterior pituitary gland to stimulate cell division and regeneration.',
+    scientificContext: 'Useful for showing an explicit reading frame starting with a Methionine Start codon (ATG) and ending with an ochre Stop codon (TAA), making it the perfect teaching dataset for full genetic translation.',
+    features: ['Pituitary Somatotropin Gene', 'Perfect Reading Frame Template', 'Start-Stop Codon Visualization'],
+    suggestedTool: 'translator',
+    sequenceA: 'ATGGCTACAGGCTCCCGGACGTCCCTGCTCCTGGCTTTTGGCCTGCTCTGCCTGCCCTGGCTTCAAGAGGGCAGTGCCTAA'
+  }
+];
+
+interface VirtualLabProps {
+  progress?: UserProgress;
+  onSaveReport?: (report: SavedReport) => void;
+}
+
+export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) {
+  // Tabs for the "Research Toolkit"
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'comparator' | 'mutation' | 'translator'>('analyzer');
   
-  const [analyzedSequence, setAnalyzedSequence] = useState<string>('');
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [copied, setCopied] = useState<boolean>(false);
+  // Notification States
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [isLibraryModalOpen, setIsLibraryModalOpen] = useState<boolean>(false);
+  const [librarySearchQuery, setLibrarySearchQuery] = useState<string>('');
+  const [selectedLibraryCategory, setSelectedLibraryCategory] = useState<string>('All');
 
-  // Sample data helper
-  const handleLoadSample = (sequence: string, label: string) => {
-    setSequenceInput(sequence);
-    setSampleLabel(label);
-    setErrorMsg('');
-    // Note: User can click "Analyze Sequence" to run calculations as requested
-  };
+  // 1. Tool 1: DNA Analyzer States
+  const [analyzerSeq, setAnalyzerSeq] = useState<string>('AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG');
+  const [analyzerError, setAnalyzerError] = useState<string>('');
+  const [analyzerResult, setAnalyzerResult] = useState<any>(null);
 
-  // Main analysis logic
-  const handleAnalyze = () => {
-    setErrorMsg('');
+  // 2. Tool 2: Sequence Comparator States
+  const [compSeqA, setCompSeqA] = useState<string>('ATGGTGCACCTGACTCCTGAGGAGAAGTCT');
+  const [compSeqB, setCompSeqB] = useState<string>('ATGGTGCACCTGACTCCTGAGGAGAAGTCC');
+  const [compError, setCompError] = useState<string>('');
+  const [compResult, setCompResult] = useState<any>(null);
 
-    // Error Safety: Check empty input
-    if (!sequenceInput || sequenceInput.trim() === '') {
-      setErrorMsg('DNA sequence cannot be empty. Please enter or load a sequence.');
-      return;
-    }
+  // 3. Tool 3: Mutation Explorer States
+  const [mutOriginal, setMutOriginal] = useState<string>('ATGGTGCACCTGACTCCTGAGGAGAAG');
+  const [mutModified, setMutModified] = useState<string>('ATGGTGCACCTGACTCCTGTGGAGAAG');
+  const [mutError, setMutError] = useState<string>('');
+  const [mutResult, setMutResult] = useState<any>(null);
 
-    // Input rules: Accept only A, T, G, C.
-    // Convert lowercase letters to uppercase
-    let cleaned = sequenceInput.toUpperCase();
-    
-    // Ignore spaces and line breaks
-    cleaned = cleaned.replace(/[\s\r\n]+/g, '');
+  // 4. Tool 4: Translation Explorer States
+  const [transSeq, setTransSeq] = useState<string>('ATGTCACCACAAACAGAGACTAAAGCA');
+  const [transError, setTransError] = useState<string>('');
+  const [transResult, setTransResult] = useState<any>(null);
 
-    // Error Safety: Reject numbers, symbols, and invalid characters
-    if (/[^ATGC]/.test(cleaned)) {
-      setErrorMsg('Invalid DNA sequence. Please use only A, T, G, and C characters.');
-      return;
-    }
+  // Report Generator Interactive Modal State
+  const [activeReport, setActiveReport] = useState<SavedReport | null>(null);
 
-    // Error Safety: Check very short sequence
-    if (cleaned.length < 3) {
-      setErrorMsg('The sequence is too short for analysis. Please enter at least 3 nucleotides.');
-      return;
-    }
+  // Clear states when tab switches
+  useEffect(() => {
+    setAnalyzerError('');
+    setCompError('');
+    setMutError('');
+    setTransError('');
+  }, [activeTab]);
 
-    // Calculate DNA Analysis properties
-    const totalLength = cleaned.length;
-    const countA = (cleaned.match(/A/g) || []).length;
-    const countT = (cleaned.match(/T/g) || []).length;
-    const countG = (cleaned.match(/G/g) || []).length;
-    const countC = (cleaned.match(/C/g) || []).length;
-
-    // Formulas: (G + C) / Total Length * 100
-    const gcPercent = ((countG + countC) / totalLength) * 100;
-    // Formulas: (A + T) / Total Length * 100
-    const atPercent = ((countA + countT) / totalLength) * 100;
-
-    // Reverse Complement Tool Logic
-    // Replace: A -> T, T -> A, G -> C, C -> G
-    const complementMap: Record<string, string> = {
-      'A': 'T',
-      'T': 'A',
-      'G': 'C',
-      'C': 'G'
-    };
-    const complement = cleaned.split('').map(char => complementMap[char] || char).join('');
-    // Then reverse the sequence
-    const reverseComplement = complement.split('').reverse().join('');
-
-    setAnalyzedSequence(cleaned);
-    setAnalysis({
-      length: totalLength,
-      counts: {
-        A: countA,
-        T: countT,
-        G: countG,
-        C: countC
-      },
-      gcPercent: parseFloat(gcPercent.toFixed(2)),
-      atPercent: parseFloat(atPercent.toFixed(2)),
-      complement,
-      reverseComplement
-    });
-  };
-
-  const handleCopy = (text: string) => {
+  // Copy helper
+  const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedText(label);
+      setTimeout(() => setCopiedText(null), 2000);
     }).catch(err => {
       console.error('Failed to copy text: ', err);
     });
   };
 
-  const handleDownloadReport = () => {
-    if (!analysis) return;
+  // Helper: validate DNA sequence characters
+  const cleanAndValidateDNA = (input: string, errorSetter: (err: string) => void): string | null => {
+    errorSetter('');
+    if (!input || input.trim() === '') {
+      errorSetter('Sequence cannot be empty. Please enter some DNA nucleobases.');
+      return null;
+    }
+    let cleaned = input.toUpperCase().replace(/[\s\r\n]+/g, '');
+    if (/[^ATGC]/.test(cleaned)) {
+      errorSetter('Invalid genetic bases. Sequences must contain only nucleobases Adenine (A), Thymine (T), Guanine (G), and Cytosine (C).');
+      return null;
+    }
+    if (cleaned.length < 3) {
+      errorSetter('Sequence is too short. Please enter at least 3 nucleotides for analysis.');
+      return null;
+    }
+    return cleaned;
+  };
+
+  // ============================================================================
+  // LOGIC: DNA ANALYZER
+  // ============================================================================
+  const executeAnalyzer = () => {
+    const cleaned = cleanAndValidateDNA(analyzerSeq, setAnalyzerError);
+    if (!cleaned) return;
+
+    const len = cleaned.length;
+    const countA = (cleaned.match(/A/g) || []).length;
+    const countT = (cleaned.match(/T/g) || []).length;
+    const countG = (cleaned.match(/G/g) || []).length;
+    const countC = (cleaned.match(/C/g) || []).length;
+
+    const gcPercent = parseFloat((((countG + countC) / len) * 100).toFixed(2));
+    const atPercent = parseFloat((((countA + countT) / len) * 100).toFixed(2));
+
+    const complementMap: Record<string, string> = { 'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G' };
+    const complement = cleaned.split('').map(char => complementMap[char] || char).join('');
+    const reverseComplement = complement.split('').reverse().join('');
+
+    setAnalyzerResult({
+      sequence: cleaned,
+      length: len,
+      counts: { A: countA, T: countT, G: countG, C: countC },
+      frequencies: {
+        A: parseFloat(((countA / len) * 100).toFixed(1)),
+        T: parseFloat(((countT / len) * 100).toFixed(1)),
+        G: parseFloat(((countG / len) * 100).toFixed(1)),
+        C: parseFloat(((countC / len) * 100).toFixed(1))
+      },
+      gcPercent,
+      atPercent,
+      complement,
+      reverseComplement
+    });
+  };
+
+  // ============================================================================
+  // LOGIC: SEQUENCE COMPARATOR
+  // ============================================================================
+  const executeComparator = () => {
+    const cleanedA = cleanAndValidateDNA(compSeqA, setCompError);
+    if (!cleanedA) return;
+    const cleanedB = cleanAndValidateDNA(compSeqB, setCompError);
+    if (!cleanedB) return;
+
+    // Pad if lengths are different to simulate clinical gaps, or alert
+    const maxLen = Math.max(cleanedA.length, cleanedB.length);
+    let paddedA = cleanedA;
+    let paddedB = cleanedB;
+
+    if (cleanedA.length !== cleanedB.length) {
+      // Pad sequences with gap indicator '-' for visual alignment
+      paddedA = cleanedA.padEnd(maxLen, '-');
+      paddedB = cleanedB.padEnd(maxLen, '-');
+    }
+
+    let matches = 0;
+    let mismatches = 0;
+    let gaps = 0;
+    const diffs: { pos: number; charA: string; charB: string }[] = [];
+
+    for (let i = 0; i < maxLen; i++) {
+      const a = paddedA[i];
+      const b = paddedB[i];
+      if (a === '-' || b === '-') {
+        gaps++;
+        diffs.push({ pos: i + 1, charA: a, charB: b });
+      } else if (a === b) {
+        matches++;
+      } else {
+        mismatches++;
+        diffs.push({ pos: i + 1, charA: a, charB: b });
+      }
+    }
+
+    const similarity = parseFloat(((matches / maxLen) * 100).toFixed(2));
+
+    setCompResult({
+      seqA: cleanedA,
+      seqB: cleanedB,
+      paddedA,
+      paddedB,
+      length: maxLen,
+      matches,
+      mismatches,
+      gaps,
+      similarity,
+      differences: diffs
+    });
+  };
+
+  // ============================================================================
+  // LOGIC: MUTATION EXPLORER
+  // ============================================================================
+  const translateSeq = (dna: string): string => {
+    let protein = '';
+    for (let i = 0; i < dna.length - 2; i += 3) {
+      const codon = dna.substring(i, i + 3);
+      const aa = CODON_TABLE[codon];
+      if (aa) {
+        if (aa.symbol === '*') {
+          protein += 'STOP';
+          break;
+        }
+        protein += aa.symbol;
+      } else {
+        protein += '?';
+      }
+    }
+    return protein || 'No complete codons';
+  };
+
+  const executeMutationExplorer = () => {
+    const orig = cleanAndValidateDNA(mutOriginal, setMutError);
+    if (!orig) return;
+    const mut = cleanAndValidateDNA(mutModified, setMutError);
+    if (!mut) return;
+
+    const origLen = orig.length;
+    const mutLen = mut.length;
+    const isSameLen = origLen === mutLen;
+
+    const origProt = translateSeq(orig);
+    const mutProt = translateSeq(mut);
+
+    let mutationType = 'Indel / Frameshift';
+    let severity = 'Neutral';
+    let explanation = '';
+    const diffList: { pos: number; from: string; to: string }[] = [];
+
+    if (isSameLen) {
+      // Find point mismatches
+      for (let i = 0; i < origLen; i++) {
+        if (orig[i] !== mut[i]) {
+          diffList.push({ pos: i + 1, from: orig[i], to: mut[i] });
+        }
+      }
+
+      if (diffList.length === 0) {
+        mutationType = 'Homologous Sequence (No Mutation)';
+        severity = 'None';
+        explanation = 'The analyzed strands are perfectly identical. No biological mutation was located.';
+      } else if (diffList.length === 1) {
+        // Point mutation: missense, nonsense, silent
+        if (origProt === mutProt) {
+          mutationType = 'Synonymous (Silent) Substitution';
+          severity = 'Low (No Effect)';
+          explanation = `A single nucleotide substitution occurred at position ${diffList[0].pos} (${diffList[0].from} → ${diffList[0].to}). Because of codon redundancy, the translated amino acid remains identical (${origProt}). This mutation has no effect on the final protein structure.`;
+        } else if (mutProt.includes('STOP') && !origProt.includes('STOP')) {
+          mutationType = 'Nonsense Substitution';
+          severity = 'High (Severe truncation)';
+          explanation = `A single nucleotide substitution at position ${diffList[0].pos} (${diffList[0].from} → ${diffList[0].to}) introduced a premature STOP codon. The translated protein is cut short, which generally eliminates its biological function entirely.`;
+        } else {
+          mutationType = 'Missense Substitution';
+          severity = 'Moderate';
+          explanation = `A single nucleotide substitution occurred at position ${diffList[0].pos} (${diffList[0].from} → ${diffList[0].to}). This alters the codon and changes one amino acid in the resulting peptide chain (${origProt} → ${mutProt}). This can moderately or severely affect protein folding and cellular activity.`;
+        }
+      } else {
+        mutationType = 'Multiple Point Substitutions';
+        severity = 'Variable';
+        explanation = `Detected ${diffList.length} distinct point nucleotide differences. This indicates localized genetic divergence, potentially altering multiple amino acid sites in the final translated protein.`;
+      }
+    } else {
+      const lenDiff = Math.abs(origLen - mutLen);
+      if (mutLen > origLen) {
+        mutationType = `Frameshift Insertion (+${lenDiff} bp)`;
+        severity = 'High';
+        explanation = `An insertion of ${lenDiff} nucleotide bases shifts the downstream triplet reading frame completely. This rewritten frame translates into an entirely different, non-functional amino acid sequence downstream from the insertion.`;
+      } else {
+        if (lenDiff % 3 === 0) {
+          mutationType = `In-Frame Codon Deletion (-${lenDiff} bp)`;
+          severity = 'Moderate';
+          explanation = `Exactly ${lenDiff / 3} codon(s) (3-base sets) were deleted. The overall downstream triplet reading frame remains intact, but specific amino acids will be missing from the final translated protein product.`;
+        } else {
+          mutationType = `Frameshift Deletion (-${lenDiff} bp)`;
+          severity = 'High';
+          explanation = `A deletion of ${lenDiff} base pairs occurred. Since this is not a multiple of 3, it causes a severe frameshift mutation, changing all subsequent codons and drastically altering the resulting protein product.`;
+        }
+      }
+    }
+
+    setMutResult({
+      orig,
+      mut,
+      origLen,
+      mutLen,
+      origProt,
+      mutProt,
+      mutationType,
+      severity,
+      explanation,
+      differences: diffList
+    });
+  };
+
+  // ============================================================================
+  // LOGIC: TRANSLATION EXPLORER
+  // ============================================================================
+  const executeTranslator = () => {
+    const cleaned = cleanAndValidateDNA(transSeq, setTransError);
+    if (!cleaned) return;
+
+    // Group sequence into codons (triplets)
+    const codons: { dna: string; rna: string; aa: { name: string; symbol: string; abbrev: string } | null }[] = [];
     
+    // Transcription: replace T with U for RNA
+    const rnaSeq = cleaned.replace(/T/g, 'U');
+
+    for (let i = 0; i < cleaned.length; i += 3) {
+      const dnaCodon = cleaned.substring(i, i + 3);
+      if (dnaCodon.length === 3) {
+        const rnaCodon = rnaSeq.substring(i, i + 3);
+        const aa = CODON_TABLE[dnaCodon] || null;
+        codons.push({ dna: dnaCodon, rna: rnaCodon, aa });
+      }
+    }
+
+    const proteinPeptide = codons.map(c => c.aa ? c.aa.symbol : '?').join('-');
+
+    setTransResult({
+      sequence: cleaned,
+      rnaSeq,
+      codons,
+      proteinPeptide,
+      codonCount: codons.length
+    });
+  };
+
+  // Load a reference sample from library
+  const handleLoadSample = (sample: ReferenceSample) => {
+    if (activeTab === 'analyzer') {
+      setAnalyzerSeq(sample.sequence);
+      setAnalyzerResult(null);
+    } else if (activeTab === 'comparator') {
+      setCompSeqA(sample.sequence);
+      // Create a slight variant for B
+      const variant = sample.sequence.substring(0, sample.sequence.length - 1) + 
+        (sample.sequence.endsWith('G') ? 'C' : 'G');
+      setCompSeqB(variant);
+      setCompResult(null);
+    } else if (activeTab === 'mutation') {
+      setMutOriginal(sample.sequence.substring(0, 30));
+      // Create a point mutation
+      const mutated = sample.sequence.substring(0, 19) + 'T' + sample.sequence.substring(20, 30);
+      setMutModified(mutated);
+      setMutResult(null);
+    } else if (activeTab === 'translator') {
+      setTransSeq(sample.sequence.substring(0, 27));
+      setTransResult(null);
+    }
+  };
+
+  // ============================================================================
+  // REPORT VIEWER GENERATOR
+  // ============================================================================
+  const handleGenerateReport = () => {
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    
-    const reportText = `================================================================
+    const reportId = `LAB-${Math.floor(Math.random() * 900000) + 100000}`;
+
+    let experimentName = '';
+    let method = '';
+    let resultSummary = '';
+    let observation = '';
+    let conclusion = '';
+    let inputSequence = '';
+
+    if (activeTab === 'analyzer' && analyzerResult) {
+      experimentName = 'DNA Sequence Composition & Compositional Analysis';
+      inputSequence = analyzerResult.sequence;
+      method = 'Computational analysis of base frequencies, GC content, and antiparallel reverse complement modeling.';
+      resultSummary = `Length: ${analyzerResult.length} bp | GC Content: ${analyzerResult.gcPercent}% | AT Content: ${analyzerResult.atPercent}%`;
+      observation = `Nucleotide breakdown: Adenine: ${analyzerResult.counts.A} (${analyzerResult.frequencies.A}%), Thymine: ${analyzerResult.counts.T} (${analyzerResult.frequencies.T}%), Guanine: ${analyzerResult.counts.G} (${analyzerResult.frequencies.G}%), Cytosine: ${analyzerResult.counts.C} (${analyzerResult.frequencies.C}%). Complement strand generated successfully: ${analyzerResult.complement}.`;
+      conclusion = `The analysis indicates a ${analyzerResult.gcPercent > 50 ? 'G-C rich' : 'A-T rich'} genomic sequence fragment. In professional biological workflows, this sequence exhibits a melting temperature compatible with stable standard laboratory PCR amplification.`;
+    } 
+    else if (activeTab === 'comparator' && compResult) {
+      experimentName = 'DNA Sequence Alignment & Similarity Comparison';
+      inputSequence = `Sample A: ${compResult.seqA} | Sample B: ${compResult.seqB}`;
+      method = 'Point-by-point genetic alignment algorithm evaluating similarity and sequence mismatches.';
+      resultSummary = `Aligned Length: ${compResult.length} bp | Matches: ${compResult.matches} | Similarity: ${compResult.similarity}%`;
+      observation = `Discovered ${compResult.mismatches} point variations and ${compResult.gaps} gaps during side-by-side alignment. Points of variation: ${compResult.differences.map((d: any) => `Pos ${d.pos} (${d.charA} vs ${d.charB})`).join(', ')}`;
+      conclusion = `The sequence comparison calculated a similarity index of ${compResult.similarity}%. This identifies high structural homology, suggesting shared genetic origin with localized polymorphisms typical of healthy genetic diversity.`;
+    } 
+    else if (activeTab === 'mutation' && mutResult) {
+      experimentName = 'Genomic Mutation Explorer & Peptide Analysis';
+      inputSequence = `Original: ${mutResult.orig} | Mutated: ${mutResult.mut}`;
+      method = 'Triplet-reading-frame analysis of substitution and indels with corresponding amino acid translation mapping.';
+      resultSummary = `Type: ${mutResult.mutationType} | Severity: ${mutResult.severity}`;
+      observation = `Original peptide product: [${mutResult.origProt}] | Mutated peptide product: [${mutResult.mutProt}]. Structural effect identified: ${mutResult.explanation}`;
+      conclusion = `Calculated a ${mutResult.severity.toLowerCase()} severity genomic change. Point variations in triplet codes can completely restructure chemical folding pathways of synthesized biological proteins.`;
+    } 
+    else if (activeTab === 'translator' && transResult) {
+      experimentName = 'Codon Translation & Ribosomal Process Simulation';
+      inputSequence = transResult.sequence;
+      method = 'Standard ribosomal translation utilizing codon mapping. Transcription to messenger RNA (mRNA) followed by peptide synthesis.';
+      resultSummary = `Codons Analyzed: ${transResult.codonCount} triplets | Synthesized Protein: ${transResult.proteinPeptide}`;
+      observation = `Transcribed mRNA sequence: [${transResult.rnaSeq}]. Assembled ${transResult.codonCount} amino acid residues, including starting initiator codes.`;
+      conclusion = `The molecular translation successfully assembled the peptide chain [${transResult.proteinPeptide}]. This highlights the biological mechanism of the central dogma, demonstrating translation from single-letter nucleotide codes to complex protein products.`;
+    } else {
+      return; // No results computed yet
+    }
+
+    const report: SavedReport = {
+      id: reportId,
+      experimentName,
+      timestamp,
+      researchQuestion: `Characterize the molecular structure, composition, and biological traits of the target genomic sequence.`,
+      method,
+      observation,
+      conclusion,
+      resultSummary
+    };
+
+    setActiveReport(report);
+  };
+
+  const handleSaveToPortfolio = () => {
+    if (!activeReport) return;
+    if (onSaveReport) {
+      onSaveReport(activeReport);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }
+  };
+
+  const downloadReportFile = () => {
+    if (!activeReport) return;
+    const text = `================================================================
                     BIOBRIDGE LAB DIAGNOSTICS
-                   DNA SEQUENCE ANALYSIS REPORT
+                   GENOMIC RESEARCH REPORT CARD
 ================================================================
-Report Date: ${timestamp} UTC
-Platform: BioBridge Lab Education Systems
+Report ID  : ${activeReport.id}
+Date       : ${activeReport.timestamp} UTC
+Experiment : ${activeReport.experimentName}
+----------------------------------------------------------------
 
-[DNA SEQUENCE METRICS]
-Sequence Length : ${analysis.length} bp
-GC Content      : ${analysis.gcPercent}%
-AT Content      : ${analysis.atPercent}%
+[RESEARCH OBJECTIVE]
+${activeReport.researchQuestion}
 
-[NUCLEOTIDE COMPOSITION]
-Adenine (A)     : ${analysis.counts.A} bases
-Thymine (T)     : ${analysis.counts.T} bases
-Guanine (G)     : ${analysis.counts.G} bases
-Cytosine (C)    : ${analysis.counts.C} bases
+[EXPERIMENTAL METHOD]
+${activeReport.method}
 
-[SEQUENCE DATA]
-Raw Sequence (5' to 3'):
-${analyzedSequence}
+[QUANTITATIVE RESULTS]
+${activeReport.resultSummary}
 
-Complement Sequence (3' to 5'):
-${analysis.complement}
+[OBSERVATION LOGS]
+${activeReport.observation}
 
-Reverse Complement Sequence (5' to 3'):
-${analysis.reverseComplement}
+[SCIENTIFIC INTERPRETATION & CONCLUSION]
+${activeReport.conclusion}
 
 ================================================================
-            VERIFIED SECURE DIAGNOSTIC VERDICT
+           BIOBRIDGE VIRTUAL BIOINFORMATICS WORKSTATION
 ================================================================`;
 
-    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `biobridge_dna_report_${analysis.length}bp.txt`;
+    link.download = `biobridge_lab_report_${activeReport.id}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -160,313 +858,1243 @@ ${analysis.reverseComplement}
 
   return (
     <div className="space-y-8 animate-fade-in" id="virtual-dna-lab-container">
+      
       {/* 1. Header Section */}
-      <div className="border-b border-slate-200 pb-6 space-y-2" id="lab-header">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <FlaskConical className="w-7 h-7 md:w-8 h-8 text-teal-600" />
-            Virtual DNA Analysis Lab
-          </h1>
-          <p className="text-slate-600 text-sm md:text-base font-medium max-w-2xl">
-            Explore DNA sequences and learn the fundamentals of bioinformatics through interactive analysis.
-          </p>
+      <div className="border-b border-slate-200 pb-5 space-y-2" id="lab-header">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+              <FlaskConical className="w-8 h-8 text-teal-600" />
+              Virtual Bioinformatics & DNA Lab
+            </h1>
+            <p className="text-slate-600 text-sm md:text-base font-medium max-w-2xl leading-relaxed">
+              Analyze nucleotide sequences, align homologous genes, inspect mutations, and explore mRNA protein translation through our research workstation.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-1.5 self-start md:self-center bg-teal-50 border border-teal-200 text-teal-800 text-xs px-3 py-1.5 rounded-lg font-mono font-bold uppercase tracking-wide">
+            <Sparkles className="w-4 h-4 text-teal-600 animate-pulse" />
+            Bioinformatics Suite
+          </div>
         </div>
-        <p className="text-slate-400 text-xs font-medium max-w-xl">
-          Students can practice basic sequence analysis without needing physical laboratory equipment.
-        </p>
       </div>
 
-      {/* Main Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" id="lab-workspace-grid">
-        {/* Left Side: Sequence Input & Sample Loader */}
-        <div className="lg:col-span-5 space-y-6" id="input-and-samples-panel">
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-6 shadow-xs">
-            {/* Header for Module */}
-            <div className="space-y-1">
-              <span className="text-[10px] bg-teal-50 border border-teal-200/50 text-teal-700 px-2.5 py-0.5 rounded font-mono font-bold tracking-wider uppercase block w-max">
-                DNA Input Module
-              </span>
-              <h2 className="text-base font-bold text-slate-900">Genomic Sequence Entry</h2>
-            </div>
-
-            {/* 6. Sample Data System */}
-            <div className="space-y-2" id="sample-data-system">
-              <span className="text-[10px] font-mono text-slate-400 font-bold tracking-wider uppercase block">
-                Load Reference DNA Sample:
-              </span>
-              <div className="flex flex-col sm:flex-row gap-2" id="sample-buttons-wrapper">
+       {/* 2. Sample Data Library Section (Pre-built reference datasets) */}
+      <div className="bg-slate-50/40 border border-slate-200/50 rounded-xl p-3 md:p-4 shadow-none flex flex-col md:flex-row md:items-center justify-between gap-3" id="sample-data-library">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-teal-600" />
+            <span className="text-xs font-bold text-slate-700">Quick-Load Reference:</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {REFERENCE_LIBRARY.map(sample => {
+              let badgeColor = 'bg-blue-50/60 text-blue-850 hover:bg-blue-100 border-blue-150';
+              if (sample.category === 'Plant') {
+                badgeColor = 'bg-emerald-50/60 text-emerald-850 hover:bg-emerald-100 border-emerald-150';
+              } else if (sample.category === 'Bacterial') {
+                badgeColor = 'bg-amber-50/60 text-amber-850 hover:bg-amber-100 border-amber-150';
+              }
+              return (
                 <button
+                  key={sample.id}
                   type="button"
-                  onClick={() => handleLoadSample("AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG", "Human Insulin (INS) Gene Fragment")}
-                  className="flex-1 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-lg text-[11px] font-bold text-slate-700 transition-all cursor-pointer shadow-3xs flex items-center gap-1.5 justify-center"
+                  onClick={() => handleLoadSample(sample)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer shadow-3xs flex items-center gap-1 ${badgeColor}`}
+                  title={sample.description}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 flex-shrink-0"></span>
-                  Human DNA Example
+                  <RefreshCw className="w-2.5 h-2.5 opacity-60" />
+                  <span>{sample.label}</span>
+                  <span className="text-[9px] opacity-60">({sample.sequence.length}bp)</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleLoadSample("ATGTCACCACAAACAGAGACTAAAGCAAGTGTTGGATTCAAAGCTGGTGTTAAAGAGTACAAATTGACTTATTATACTCCTGAATACGAAACCAAGGATACTGATATCTTGGCAGCATTCCGA", "Arabidopsis thaliana rbcL Gene Segment")}
-                  className="flex-1 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-lg text-[11px] font-bold text-slate-700 transition-all cursor-pointer shadow-3xs flex items-center gap-1.5 justify-center"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
-                  Plant DNA Example
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleLoadSample("AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAA", "Escherichia coli 16S rRNA Segment")}
-                  className="flex-1 px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-350 rounded-lg text-[11px] font-bold text-slate-700 transition-all cursor-pointer shadow-3xs flex items-center gap-1.5 justify-center"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
-                  Bacterial DNA Example
-                </button>
-              </div>
-              {sampleLabel && (
-                <p className="text-[10px] text-slate-500 font-medium italic pl-1 animate-fade-in">
-                  Loaded sample: {sampleLabel}
-                </p>
-              )}
-            </div>
-
-            {/* 2. DNA Sequence Input Form */}
-            <div className="space-y-2">
-              <label htmlFor="dna-sequence-input-area" className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
-                Raw Nucleotide Sequence:
-              </label>
-              <textarea
-                id="dna-sequence-input-area"
-                value={sequenceInput}
-                onChange={(e) => {
-                  setSequenceInput(e.target.value);
-                  setSampleLabel(''); // Clear sample tag if edited manually
-                }}
-                placeholder="ATGCGTACGTA"
-                className="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-4 font-mono text-xs md:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-40 leading-relaxed shadow-3xs"
-              />
-              <p className="text-[10px] text-slate-400 font-medium leading-normal pl-0.5">
-                Note: Standard inputs accept <strong className="text-slate-500">A, T, G, C</strong> bases. Spaces, tabs, and line breaks are automatically ignored, and lowercase letters are converted.
-              </p>
-            </div>
-
-            {/* Educational error messaging */}
-            {errorMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2 animate-fade-in" id="input-validation-error">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                <div className="leading-tight">{errorMsg}</div>
-              </div>
-            )}
-
-            {/* Submit Action */}
-            <button
-              onClick={handleAnalyze}
-              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all duration-150 shadow-2xs active:scale-[0.98]"
-              id="btn-analyze-sequence"
-            >
-              <Activity className="w-4 h-4" />
-              Analyze Sequence
-            </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right Side: Analysis Report Dashboard */}
-        <div className="lg:col-span-7 space-y-6" id="analysis-report-panel">
-          {analysis ? (
-            <div className="space-y-6 animate-fade-in" id="lab-analysis-results">
-              
-              {/* 4. Results Dashboard */}
-              <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-5 shadow-xs">
-                <div className="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-teal-600 font-mono font-bold uppercase tracking-wider block">Diagnostics Completed</span>
-                    <h2 className="text-base font-bold text-slate-900">Molecular Metrics Dashboard</h2>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDownloadReport}
-                      className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-900 border border-teal-200 hover:border-teal-300 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
-                      id="btn-download-lab-report"
-                    >
-                      <Download className="w-3.5 h-3.5 text-teal-600" />
-                      Download Report
-                    </button>
-                    <span className="text-[10px] font-mono bg-slate-100 border border-slate-200 px-2 py-1.5 rounded text-slate-500 font-bold">
-                      VERIFIED REPORT
-                    </span>
-                  </div>
-                </div>
+        <button
+          type="button"
+          onClick={() => setIsLibraryModalOpen(true)}
+          className="flex items-center justify-center gap-1.5 px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-3xs shrink-0 self-start md:self-auto"
+          id="open-sample-library-context-btn"
+        >
+          <Info className="w-3.5 h-3.5" />
+          <span>View All Samples & Details</span>
+        </button>
+      </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" id="metric-cards-grid">
-                  {/* Card A: Sequence Length */}
-                  <div className="p-4 bg-slate-50/50 border border-slate-200 rounded-xl flex flex-col justify-between shadow-3xs" id="card-seq-length">
-                    <span className="text-[10px] text-slate-400 font-mono block font-bold uppercase tracking-wider">Sequence Length</span>
-                    <div className="mt-1.5 flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-slate-900">{analysis.length}</span>
-                      <span className="text-xs font-mono font-bold text-slate-400">bp</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-medium block mt-1">Total nucleotide bases analyzed.</span>
-                  </div>
+      {/* 3. Bioinformatics Toolbox (Research Toolkit Tabs) */}
+      <div className="bg-white border-2 border-teal-600 rounded-2xl shadow-[0_15px_45px_-10px_rgba(13,148,136,0.14)] overflow-hidden ring-1 ring-teal-600/10" id="research-toolkit-suite">
+        
+        {/* Tab Header Selector */}
+        <div className="bg-slate-50/80 border-b border-slate-200 p-2 flex flex-wrap gap-1 md:gap-1.5" id="toolkit-tab-header">
+          {[
+            { id: 'analyzer', label: 'DNA Analyzer', icon: Search, desc: 'Calculates base counts, frequencies, and GC/AT content.' },
+            { id: 'comparator', label: 'Sequence Comparator', icon: GitCompare, desc: 'Aligns and compares two sequences side-by-side.' },
+            { id: 'mutation', label: 'Mutation Explorer', icon: Layers, desc: 'Analyzes substitutions, deletions, and reading frames.' },
+            { id: 'translator', label: 'Translation Explorer', icon: Activity, desc: 'Converts DNA to RNA and amino acid peptide chains.' }
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isSelected = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                title={tab.desc}
+                className={`px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  isSelected 
+                    ? 'bg-teal-600 text-white shadow-sm font-extrabold' 
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                id={`toolkit-tab-btn-${tab.id}`}
+              >
+                <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-                  {/* Card B: GC Content */}
-                  <div className="p-4 bg-slate-50/50 border border-slate-200 rounded-xl flex flex-col justify-between shadow-3xs" id="card-gc-content">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-slate-400 font-mono block font-bold uppercase tracking-wider">GC Content</span>
-                      <span className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-150 px-1.5 py-0.5 rounded font-mono font-black uppercase">
-                        {analysis.gcPercent > 60 ? "High GC" : analysis.gcPercent < 40 ? "Low GC" : "Moderate"}
-                      </span>
-                    </div>
-                    <div className="mt-1.5">
-                      <span className="text-2xl font-black text-emerald-600">{analysis.gcPercent}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
-                      <div className="bg-emerald-500 h-full rounded-full transition-all duration-300" style={{ width: `${analysis.gcPercent}%` }}></div>
-                    </div>
-                  </div>
+        {/* Tab Body Contents */}
+        <div className="p-6 md:p-8" id="toolkit-active-workspace">
 
-                  {/* Card C: AT Content */}
-                  <div className="p-4 bg-slate-50/50 border border-slate-200 rounded-xl flex flex-col justify-between shadow-3xs" id="card-at-content">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-slate-400 font-mono block font-bold uppercase tracking-wider">AT Content</span>
-                      <span className="text-[9px] bg-sky-50 text-sky-800 border border-sky-150 px-1.5 py-0.5 rounded font-mono font-black uppercase">
-                        {analysis.atPercent > 60 ? "High AT" : analysis.atPercent < 40 ? "Low AT" : "Moderate"}
-                      </span>
-                    </div>
-                    <div className="mt-1.5">
-                      <span className="text-2xl font-black text-sky-600">{analysis.atPercent}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
-                      <div className="bg-sky-500 h-full rounded-full transition-all duration-300" style={{ width: `${analysis.atPercent}%` }}></div>
-                    </div>
-                  </div>
-
-                  {/* Card D: Nucleotide Distribution */}
-                  <div className="p-4 bg-slate-50/50 border border-slate-200 rounded-xl space-y-2.5 shadow-3xs" id="card-nucleotide-distribution">
-                    <span className="text-[10px] text-slate-400 font-mono block font-bold uppercase tracking-wider">Nucleotide Distribution</span>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex items-center justify-between p-1.5 bg-white border border-slate-150 rounded-lg">
-                        <span className="font-mono font-black text-slate-700">Adenine (A)</span>
-                        <span className="font-mono font-bold text-slate-900">{analysis.counts.A}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-1.5 bg-white border border-slate-150 rounded-lg">
-                        <span className="font-mono font-black text-slate-700">Thymine (T)</span>
-                        <span className="font-mono font-bold text-slate-900">{analysis.counts.T}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-1.5 bg-white border border-slate-150 rounded-lg">
-                        <span className="font-mono font-black text-slate-700">Guanine (G)</span>
-                        <span className="font-mono font-bold text-slate-900">{analysis.counts.G}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-1.5 bg-white border border-slate-150 rounded-lg">
-                        <span className="font-mono font-black text-slate-700">Cytosine (C)</span>
-                        <span className="font-mono font-bold text-slate-900">{analysis.counts.C}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          {/* TOOL 1: DNA ANALYZER */}
+          {activeTab === 'analyzer' && (
+            <div className="space-y-6" id="tool-analyzer-panel">
+              {/* Pre-use Explanation */}
+              <div className="p-4 bg-teal-50/40 border border-teal-150 rounded-xl space-y-2 text-xs">
+                <span className="text-[10px] bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max">
+                  Tool Explanation
+                </span>
+                <h4 className="font-extrabold text-teal-950">How the DNA Analyzer Works</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  The DNA Analyzer parses a genetic string, outputs quantitative base counts, and calculates its <strong>GC content ratio</strong>. Guanine-Cytosine pairings are held by three hydrogen bonds, meaning GC-rich regions exhibit high thermal stability and reside predominantly in gene-dense portions of chromosomes. The tool also designs the corresponding <strong>complementary DNA</strong> and <strong>reverse complement</strong> strands.
+                </p>
               </div>
 
-              {/* 5. Reverse Complement Tool Section */}
-              <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-4 shadow-xs" id="reverse-complement-tool">
-                <div className="border-b border-slate-100 pb-2.5 flex items-center gap-2">
-                  <RefreshCw className="w-5 h-5 text-teal-600" />
-                  <h3 className="text-base font-bold text-slate-900">Reverse Complement Tool</h3>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  {/* Original Input */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono text-slate-400 font-bold block uppercase tracking-wider">
-                      Input Sequence (5' to 3'):
-                    </span>
-                    <div className="bg-slate-50/50 p-2.5 rounded-lg font-mono text-slate-600 break-all border border-slate-200 shadow-inner">
-                      {analyzedSequence}
-                    </div>
-                  </div>
-
-                  {/* Complement */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono text-slate-400 font-bold block uppercase tracking-wider">
-                      Complement Sequence (3' to 5'):
-                    </span>
-                    <div className="bg-slate-50/50 p-2.5 rounded-lg font-mono text-slate-600 break-all border border-slate-200 shadow-inner">
-                      {analysis.complement}
-                    </div>
-                  </div>
-
-                  {/* Reverse Complement */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Input Panel */}
+                <div className="lg:col-span-5 space-y-4">
                   <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-mono text-teal-600 font-black block uppercase tracking-wider">
-                        Reverse Complement (5' to 3'):
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(analysis.reverseComplement)}
-                        className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 px-2 py-1 rounded text-[10px] font-mono font-bold flex items-center gap-1 border border-teal-200 transition-all cursor-pointer shadow-3xs"
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
+                      <label htmlFor="analyzer-seq-area" className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
+                        Sequence to Analyze (DNA):
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val) return;
+                          const preset = ANALYZER_PRESETS.find(p => p.id === val);
+                          if (preset && preset.seq) {
+                            setAnalyzerSeq(preset.seq);
+                            setAnalyzerResult(null);
+                          }
+                        }}
+                        className="bg-slate-50 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-teal-300 rounded-lg text-[11px] font-bold px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-3xs transition-all max-w-full"
                       >
-                        {copied ? (
-                          <>
-                            <CheckCircle2 className="w-3 h-3 text-teal-600" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            Copy Strand
-                          </>
-                        )}
-                      </button>
+                        <option value="">🧪 Load Sample Preset</option>
+                        {ANALYZER_PRESETS.map(preset => (
+                          <option key={preset.id} value={preset.id}>
+                            [{preset.category}] {preset.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="bg-teal-50/40 p-3 rounded-lg font-mono text-teal-950 font-bold break-all border border-teal-100 shadow-inner text-sm">
-                      {analysis.reverseComplement}
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-500 leading-relaxed font-medium bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <strong>Scientific workflow note:</strong> Reverse complement is commonly used in DNA sequence analysis workflows. It represents the synthesized double-stranded DNA sequence in its standard 5' to 3' replication orientation.
-                </p>
-              </div>
-
-              {/* 7. Educational Explanation Layer */}
-              <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-4 shadow-xs" id="educational-explanation-layer">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-                  <HelpCircle className="w-5 h-5 text-teal-600" />
-                  <h3 className="text-base font-bold text-slate-900">What does this mean?</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-xl space-y-1">
-                    <span className="text-xs font-bold text-emerald-800 block">GC Content</span>
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                      Higher GC content can indicate differences in DNA composition. Guanine (G) and Cytosine (C) pair with three hydrogen bonds, which are stronger and more stable than the two hydrogen bonds of Adenine (A) and Thymine (T). Higher GC content makes a DNA strand more resistant to heat denaturation.
+                    <textarea
+                      id="analyzer-seq-area"
+                      value={analyzerSeq}
+                      onChange={(e) => setAnalyzerSeq(e.target.value)}
+                      placeholder="Enter DNA sequence (A, T, G, C)"
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-36 leading-relaxed shadow-3xs"
+                    />
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Note: Lowercase is converted automatically, and spaces/newlines are ignored.
                     </p>
                   </div>
 
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <span className="text-xs font-bold text-slate-800 block">Sequence Length</span>
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                      Shows number of nucleotide bases analyzed. In physical research, sequence lengths are calculated in base pairs (bp). Different genomic structures require exact fragment sizing, such as sizing PCR primers or identifying structural open reading frames.
-                    </p>
-                  </div>
-                </div>
-              </div>
+                  {analyzerError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>{analyzerError}</div>
+                    </div>
+                  )}
 
-            </div>
-          ) : (
-            /* Standby State */
-            <div className="p-8 bg-slate-50 border-2 border-slate-200 border-dashed rounded-2xl flex flex-col items-center justify-center text-center space-y-4 h-full min-h-[350px] animate-fade-in" id="empty-state-card">
-              <div className="w-16 h-16 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
-                <FlaskConical className="w-8 h-8 text-teal-600" />
-              </div>
-              <div className="space-y-1.5 max-w-sm">
-                <h4 className="text-base font-bold text-slate-900">Awaiting Sequence Analysis</h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  Load one of the predefined samples or paste your own DNA sequence strand on the left, then click <strong>Analyze Sequence</strong> to run molecular diagnostics.
-                </p>
+                  <button
+                    onClick={executeAnalyzer}
+                    className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
+                  >
+                    <Activity className="w-4 h-4" />
+                    Analyze Composition
+                  </button>
+                </div>
+
+                {/* Output Panel */}
+                <div className="lg:col-span-7">
+                  {analyzerResult ? (
+                    <div className="space-y-5 animate-fade-in" id="analyzer-result-box">
+                      
+                      {/* Metric Widgets */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Sequence Length</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-black text-slate-800">{analyzerResult.length}</span>
+                            <span className="text-[10px] font-mono text-slate-400">bp</span>
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-1">
+                          <span className="text-[9px] text-emerald-800 font-mono font-bold uppercase block tracking-wider">GC Content</span>
+                          <span className="text-xl font-black text-emerald-600">{analyzerResult.gcPercent}%</span>
+                        </div>
+
+                        <div className="p-3.5 bg-blue-50/30 border border-blue-100 rounded-xl space-y-1">
+                          <span className="text-[9px] text-blue-800 font-mono font-bold uppercase block tracking-wider">AT Content</span>
+                          <span className="text-xl font-black text-blue-600">{analyzerResult.atPercent}%</span>
+                        </div>
+                      </div>
+
+                      {/* Base Frequency Table */}
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider text-[10px] font-mono">Base Frequency & Distribution</span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {[
+                            { base: 'Adenine (A)', count: analyzerResult.counts.A, freq: analyzerResult.frequencies.A, color: 'border-blue-200 bg-blue-500' },
+                            { base: 'Thymine (T)', count: analyzerResult.counts.T, freq: analyzerResult.frequencies.T, color: 'border-sky-200 bg-sky-500' },
+                            { base: 'Guanine (G)', count: analyzerResult.counts.G, freq: analyzerResult.frequencies.G, color: 'border-emerald-200 bg-emerald-500' },
+                            { base: 'Cytosine (C)', count: analyzerResult.counts.C, freq: analyzerResult.frequencies.C, color: 'border-teal-200 bg-teal-500' }
+                          ].map(item => (
+                            <div key={item.base} className="bg-white border border-slate-150 p-2.5 rounded-lg text-center space-y-1">
+                              <span className="text-[10px] font-bold text-slate-500 block">{item.base}</span>
+                              <span className="text-sm font-black text-slate-800 block">{item.count}</span>
+                              <span className="text-[10px] font-mono font-bold text-slate-400 block">{item.freq}%</span>
+                              <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                                <div className={`${item.color} h-full`} style={{ width: `${item.freq}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Antiparallel Strands */}
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5 text-xs">
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-mono font-bold text-slate-400 block uppercase">Original Template (5' → 3'):</span>
+                          <div className="bg-white p-2 border border-slate-150 rounded-md font-mono text-slate-700 break-all">{analyzerResult.sequence}</div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-mono font-bold text-slate-400 block uppercase">Complementary Strand (3' ← 5'):</span>
+                          <div className="bg-white p-2 border border-slate-150 rounded-md font-mono text-slate-700 break-all">{analyzerResult.complement}</div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-mono font-bold text-teal-700 block uppercase">Reverse Complement (5' → 3'):</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(analyzerResult.reverseComplement, 'revcomp')}
+                              className="text-[10px] font-bold font-mono text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedText === 'revcomp' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                              Copy
+                            </button>
+                          </div>
+                          <div className="bg-teal-50/40 p-2.5 border border-teal-150 rounded-md font-mono text-teal-900 font-bold break-all">{analyzerResult.reverseComplement}</div>
+                        </div>
+
+                        <div className="p-2.5 bg-slate-100 rounded-lg text-[10px] text-slate-500 font-medium">
+                          <span className="font-bold text-slate-600 block uppercase tracking-wide text-[9px] mb-0.5">Biological Use:</span>
+                          Reverse complementation matches sequence coordinates to the complimentary standard double-helix strand in its proper 5' to 3' replication orientation. This is vital for designing DNA PCR primers and matching genomic sequencing reads.
+                        </div>
+                      </div>
+
+                      {/* Report generation button */}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleGenerateReport}
+                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Generate Research Report
+                        </button>
+                      </div>
+
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[250px]">
+                      <FlaskConical className="w-10 h-10 text-slate-300 animate-pulse" />
+                      <h4 className="text-sm font-bold text-slate-800">No Analysis Calculated</h4>
+                      <p className="text-xs text-slate-400 max-w-xs font-medium">Specify your DNA sequence and click Analyze to view composition percentages and complementarity.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
+
+          {/* TOOL 2: SEQUENCE COMPARATOR */}
+          {activeTab === 'comparator' && (
+            <div className="space-y-6" id="tool-comparator-panel">
+              {/* Pre-use Explanation */}
+              <div className="p-4 bg-teal-50/40 border border-teal-150 rounded-xl space-y-2 text-xs">
+                <span className="text-[10px] bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max">
+                  Tool Explanation
+                </span>
+                <h4 className="font-extrabold text-teal-950">How the Sequence Comparator Works</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  The Sequence Comparator maps two DNA strands side-by-side. If the sequences exhibit unequal lengths, the comparison automatically pads them with gap characters (<code>-</code>) representing indel deletion points. Point-by-point alignments help identify conserved genetic homology and isolate mutation sites.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Input Panel */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* Preset Selector */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 shadow-3xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Compare Presets:</span>
+                      <span className="text-[9px] text-teal-600 font-bold font-mono">Conserved Pairs</span>
+                    </div>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const preset = COMPARATOR_PRESETS.find(p => p.id === val);
+                        if (preset && preset.seqA && preset.seqB) {
+                          setCompSeqA(preset.seqA);
+                          setCompSeqB(preset.seqB);
+                          setCompResult(null);
+                        }
+                      }}
+                      className="w-full bg-white text-slate-700 border border-slate-200 hover:border-teal-300 rounded-lg text-xs font-bold px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-3xs transition-all"
+                    >
+                      <option value="">🧪 Load Homology Preset...</option>
+                      {COMPARATOR_PRESETS.map(preset => (
+                        <option key={preset.id} value={preset.id}>
+                          [{preset.category}] {preset.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="comp-seq-a" className="text-xs font-bold text-slate-500 uppercase tracking-wide block flex justify-between">
+                      <span>Sequence A:</span>
+                      <span className="font-mono text-slate-400 text-[10px]">{compSeqA.length} bp</span>
+                    </label>
+                    <textarea
+                      id="comp-seq-a"
+                      value={compSeqA}
+                      onChange={(e) => setCompSeqA(e.target.value)}
+                      placeholder="Enter Sequence A"
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-24 leading-relaxed shadow-3xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="comp-seq-b" className="text-xs font-bold text-slate-500 uppercase tracking-wide block flex justify-between">
+                      <span>Sequence B:</span>
+                      <span className="font-mono text-slate-400 text-[10px]">{compSeqB.length} bp</span>
+                    </label>
+                    <textarea
+                      id="comp-seq-b"
+                      value={compSeqB}
+                      onChange={(e) => setCompSeqB(e.target.value)}
+                      placeholder="Enter Sequence B"
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-24 leading-relaxed shadow-3xs"
+                    />
+                  </div>
+
+                  {compError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>{compError}</div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={executeComparator}
+                    className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
+                  >
+                    <GitCompare className="w-4 h-4" />
+                    Compare DNA Sequences
+                  </button>
+                </div>
+
+                {/* Output Panel */}
+                <div className="lg:col-span-7">
+                  {compResult ? (
+                    <div className="space-y-5 animate-fade-in" id="comp-result-box">
+                      
+                      {/* Comparison Metrics */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Similarity</span>
+                          <span className="text-lg font-black text-teal-600">{compResult.similarity}%</span>
+                        </div>
+
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Matches</span>
+                          <span className="text-lg font-black text-slate-800">{compResult.matches} bp</span>
+                        </div>
+
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Mismatches</span>
+                          <span className="text-lg font-black text-rose-600">{compResult.mismatches} bp</span>
+                        </div>
+
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Gaps / Indels</span>
+                          <span className="text-lg font-black text-slate-500">{compResult.gaps} bp</span>
+                        </div>
+                      </div>
+
+                      {/* Visual Alignment Map */}
+                      <div className="p-4 bg-slate-950 text-slate-200 rounded-xl border border-slate-900 space-y-3 font-mono text-xs overflow-x-auto shadow-inner">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase block tracking-wider mb-1">Visual Base Alignment Map:</span>
+                        
+                        <div className="space-y-2.5 pb-2">
+                          {/* Strand A */}
+                          <div className="flex items-center gap-3">
+                            <span className="w-16 text-[9px] text-slate-400 font-bold uppercase tracking-wider">Strand A:</span>
+                            <div className="flex gap-1">
+                              {compResult.paddedA.split('').map((char: string, idx: number) => (
+                                <span 
+                                  key={idx} 
+                                  className={`w-6 h-7 flex items-center justify-center rounded font-bold ${
+                                    char === '-' ? 'bg-slate-800 text-slate-500' :
+                                    compResult.paddedA[idx] === compResult.paddedB[idx] ? 'bg-slate-900 text-teal-400' : 'bg-rose-950 text-rose-300'
+                                  }`}
+                                >
+                                  {char}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Matching Bar */}
+                          <div className="flex items-center gap-3">
+                            <span className="w-16 shrink-0"></span>
+                            <div className="flex gap-1">
+                              {compResult.paddedA.split('').map((_char: string, idx: number) => {
+                                const isMatch = compResult.paddedA[idx] === compResult.paddedB[idx] && compResult.paddedA[idx] !== '-';
+                                return (
+                                  <span key={idx} className="w-6 text-center text-xs font-bold text-slate-600">
+                                    {isMatch ? '|' : '·'}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Strand B */}
+                          <div className="flex items-center gap-3">
+                            <span className="w-16 text-[9px] text-slate-400 font-bold uppercase tracking-wider">Strand B:</span>
+                            <div className="flex gap-1">
+                              {compResult.paddedB.split('').map((char: string, idx: number) => (
+                                <span 
+                                  key={idx} 
+                                  className={`w-6 h-7 flex items-center justify-center rounded font-bold ${
+                                    char === '-' ? 'bg-slate-800 text-slate-500' :
+                                    compResult.paddedA[idx] === compResult.paddedB[idx] ? 'bg-slate-900 text-teal-400' : 'bg-rose-950 text-rose-300'
+                                  }`}
+                                >
+                                  {char}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 text-[10px] text-slate-400 pt-2 border-t border-slate-900">
+                          <div className="flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded bg-slate-900 border border-teal-950 inline-block" />
+                            <span className="text-teal-400 font-bold">Match</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded bg-rose-950 border border-rose-900 inline-block" />
+                            <span className="text-rose-300 font-bold">Mismatch</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded bg-slate-800 inline-block" />
+                            <span>Gap / Indel</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Variation Loci Table */}
+                      {compResult.differences.length > 0 ? (
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                          <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider block">List of Divergence Loci:</span>
+                          <div className="max-h-36 overflow-y-auto space-y-1.5 pr-2">
+                            {compResult.differences.map((diff: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-white border border-slate-150 rounded-lg">
+                                <span className="font-mono text-slate-500">Coordinate position: <strong>{diff.pos}</strong></span>
+                                <span className="font-mono font-bold text-slate-700">
+                                  {diff.charA === '-' ? 'Gap in A' : `Base ${diff.charA}`} 
+                                  <span className="mx-2 text-slate-400">→</span> 
+                                  {diff.charB === '-' ? 'Gap in B' : `Base ${diff.charB}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200">
+                          Perfect homology! No single nucleotide differences or gaps located.
+                        </div>
+                      )}
+
+                      {/* Report generation button */}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleGenerateReport}
+                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Generate Research Report
+                        </button>
+                      </div>
+
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[250px]">
+                      <GitCompare className="w-10 h-10 text-slate-300 animate-pulse" />
+                      <h4 className="text-sm font-bold text-slate-800">No Comparison Computed</h4>
+                      <p className="text-xs text-slate-400 max-w-xs font-medium">Input or load two DNA sequence strings and click Compare to evaluate alignment homology.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TOOL 3: MUTATION EXPLORER */}
+          {activeTab === 'mutation' && (
+            <div className="space-y-6" id="tool-mutation-panel">
+              {/* Pre-use Explanation */}
+              <div className="p-4 bg-teal-50/40 border border-teal-150 rounded-xl space-y-2 text-xs">
+                <span className="text-[10px] bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max">
+                  Tool Explanation
+                </span>
+                <h4 className="font-extrabold text-teal-950">How the Mutation Explorer Works</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  The Mutation Explorer maps point substitutions or insertions/deletions (indels) against a baseline gene. The tool also translates both nucleotide strings into <strong>peptide amino acid arrays</strong>, diagnosing whether a point change is a <em>Silent</em> mutation (no amino acid shift), <em>Missense</em> mutation (one residue shift), or <em>Nonsense</em> mutation (premature STOP truncation).
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Input Panel */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* Preset Selector */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 shadow-3xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Mutation Presets:</span>
+                      <span className="text-[9px] text-teal-600 font-bold font-mono">Clinical Scenarios</span>
+                    </div>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const preset = MUTATION_PRESETS.find(p => p.id === val);
+                        if (preset && preset.seqOriginal && preset.seqModified) {
+                          setMutOriginal(preset.seqOriginal);
+                          setMutModified(preset.seqModified);
+                          setMutResult(null);
+                        }
+                      }}
+                      className="w-full bg-white text-slate-700 border border-slate-200 hover:border-teal-300 rounded-lg text-xs font-bold px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-3xs transition-all"
+                    >
+                      <option value="">🧪 Load Mutation Preset...</option>
+                      {MUTATION_PRESETS.map(preset => (
+                        <option key={preset.id} value={preset.id}>
+                          [{preset.category}] {preset.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="mut-orig" className="text-xs font-bold text-slate-500 uppercase tracking-wide block flex justify-between">
+                      <span>Baseline Gene Template (Reference):</span>
+                      <span className="font-mono text-slate-400 text-[10px]">{mutOriginal.length} bp</span>
+                    </label>
+                    <textarea
+                      id="mut-orig"
+                      value={mutOriginal}
+                      onChange={(e) => setMutOriginal(e.target.value)}
+                      placeholder="Enter original baseline DNA"
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-24 leading-relaxed shadow-3xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="mut-mod" className="text-xs font-bold text-slate-500 uppercase tracking-wide block flex justify-between">
+                      <span>Test / Mutated DNA Strand:</span>
+                      <span className="font-mono text-slate-400 text-[10px]">{mutModified.length} bp</span>
+                    </label>
+                    <textarea
+                      id="mut-mod"
+                      value={mutModified}
+                      onChange={(e) => setMutModified(e.target.value)}
+                      placeholder="Enter mutated DNA"
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-24 leading-relaxed shadow-3xs"
+                    />
+                  </div>
+
+                  {mutError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>{mutError}</div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={executeMutationExplorer}
+                    className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
+                  >
+                    <Layers className="w-4 h-4" />
+                    Inspect Mutational Changes
+                  </button>
+                </div>
+
+                {/* Output Panel */}
+                <div className="lg:col-span-7">
+                  {mutResult ? (
+                    <div className="space-y-5 animate-fade-in" id="mut-result-box">
+                      
+                      {/* Diagnostic Headers */}
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Mutational Diagnostic Type</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-black font-mono uppercase ${
+                            mutResult.severity === 'High' ? 'bg-rose-100 text-rose-800' :
+                            mutResult.severity === 'Moderate' ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800'
+                          }`}>
+                            Severity: {mutResult.severity}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-black text-slate-900">{mutResult.mutationType}</h3>
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium">{mutResult.explanation}</p>
+                      </div>
+
+                      {/* Peptide Comparison */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Baseline Peptide String:</span>
+                          <div className="bg-white p-2 border border-slate-150 rounded font-mono text-xs font-bold text-slate-700 break-all">
+                            {mutResult.origProt}
+                          </div>
+                        </div>
+
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                          <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Mutated Peptide String:</span>
+                          <div className="bg-white p-2 border border-slate-150 rounded font-mono text-xs font-bold text-rose-800 break-all">
+                            {mutResult.mutProt}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detailed mismatch points */}
+                      {mutResult.differences.length > 0 && (
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                          <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider block">Point Variations Located:</span>
+                          <div className="max-h-28 overflow-y-auto space-y-1.5 pr-2">
+                            {mutResult.differences.map((diff: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-white border border-slate-150 rounded-lg">
+                                <span className="font-mono text-slate-500">Base coordinate position: <strong>{diff.pos}</strong></span>
+                                <span className="font-mono font-bold text-slate-800">
+                                  Base {diff.from} <span className="mx-1 text-slate-400">→</span> Base {diff.to}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Report generation button */}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleGenerateReport}
+                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Generate Research Report
+                        </button>
+                      </div>
+
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[250px]">
+                      <Layers className="w-10 h-10 text-slate-300 animate-pulse" />
+                      <h4 className="text-sm font-bold text-slate-800">No Mutational Scan Computed</h4>
+                      <p className="text-xs text-slate-400 max-w-xs font-medium">Input baseline gene references on the left and click Scan to trace exact phenotypic changes in translated peptides.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TOOL 4: TRANSLATION EXPLORER */}
+          {activeTab === 'translator' && (
+            <div className="space-y-6" id="tool-translator-panel">
+              {/* Pre-use Explanation */}
+              <div className="p-4 bg-teal-50/40 border border-teal-150 rounded-xl space-y-2 text-xs">
+                <span className="text-[10px] bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max">
+                  Tool Explanation
+                </span>
+                <h4 className="font-extrabold text-teal-950">How the Translation Explorer Works</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  The Translation Explorer simulates standard transcription and translation models. Transcription converts DNA into a mobile <strong>messenger RNA (mRNA)</strong> transcript, swapping Thymine (T) for Uracil (U). Ribosomes then parse the transcript in 3-character <strong>triplet codons</strong>, binding complementary tRNA molecules carrying specific <strong>amino acid residues</strong>.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Input Panel */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* Preset Selector */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 shadow-3xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Translation Presets:</span>
+                      <span className="text-[9px] text-teal-600 font-bold font-mono">Peptide Expression</span>
+                    </div>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const preset = TRANSLATOR_PRESETS.find(p => p.id === val);
+                        if (preset && preset.seq) {
+                          setTransSeq(preset.seq);
+                          setTransResult(null);
+                        }
+                      }}
+                      className="w-full bg-white text-slate-700 border border-slate-200 hover:border-teal-300 rounded-lg text-xs font-bold px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer shadow-3xs transition-all"
+                    >
+                      <option value="">🧪 Load Translation Preset...</option>
+                      {TRANSLATOR_PRESETS.map(preset => (
+                        <option key={preset.id} value={preset.id}>
+                          [{preset.category}] {preset.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="translator-seq" className="text-xs font-bold text-slate-500 uppercase tracking-wide block flex justify-between">
+                      <span>DNA Sequence Template:</span>
+                      <span className="font-mono text-slate-400 text-[10px]">{transSeq.length} bp</span>
+                    </label>
+                    <textarea
+                      id="translator-seq"
+                      value={transSeq}
+                      onChange={(e) => setTransSeq(e.target.value)}
+                      placeholder="Enter DNA (e.g. ATG...)"
+                      className="w-full bg-slate-50/40 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 focus:bg-white focus:ring-1 focus:ring-teal-500 h-36 leading-relaxed shadow-3xs"
+                    />
+                  </div>
+
+                  {transError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>{transError}</div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={executeTranslator}
+                    className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
+                  >
+                    <Activity className="w-4 h-4" />
+                    Translate DNA Sequence
+                  </button>
+                </div>
+
+                {/* Output Panel */}
+                <div className="lg:col-span-7">
+                  {transResult ? (
+                    <div className="space-y-6 animate-fade-in" id="trans-result-box">
+                      
+                      {/* Transcription mRNA transcript banner */}
+                      <div className="p-4 bg-teal-50/20 border border-teal-150 rounded-xl space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-mono font-bold text-teal-800 uppercase tracking-wide text-[9px]">Transcribed mRNA Copy (5' → 3'):</span>
+                          <span className="text-slate-400 font-mono text-[9px]">{transResult.codonCount} Codons</span>
+                        </div>
+                        <div className="font-mono font-black text-xs break-all text-teal-950 bg-white p-2 rounded border border-teal-100 shadow-3xs">
+                          {transResult.rnaSeq}
+                        </div>
+                      </div>
+
+                      {/* Ribosome Translation Chain */}
+                      <div className="space-y-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide block">Assembled Ribosomal Codon Chain:</span>
+                        
+                        <div className="flex flex-wrap gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl" id="codon-pods-grid">
+                          {transResult.codons.map((codon: any, idx: number) => (
+                            <div 
+                              key={idx} 
+                              className="bg-white border border-slate-200 rounded-xl p-3 text-center space-y-1.5 flex-1 min-w-[100px] max-w-[140px] hover:border-teal-500 hover:shadow-3xs transition-all cursor-help group"
+                              title={`${codon.aa ? codon.aa.name : 'Unknown Amino Acid'} - Codon: ${codon.dna}`}
+                            >
+                              <div className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider">
+                                CODON {idx + 1}
+                              </div>
+                              <div className="font-mono text-xs text-slate-600 flex justify-center gap-1.5">
+                                <span className="font-bold">DNA: {codon.dna}</span>
+                              </div>
+                              <div className="font-mono text-xs text-teal-700 flex justify-center gap-1.5">
+                                <span className="font-extrabold">RNA: {codon.rna}</span>
+                              </div>
+                              <div className="py-1 bg-teal-50/50 border border-teal-100 rounded-lg">
+                                <span className="font-mono font-black text-xs text-teal-900 block">
+                                  {codon.aa ? codon.aa.abbrev : '?'}
+                                </span>
+                              </div>
+                              <div className="text-[9px] text-slate-500 font-medium truncate">
+                                {codon.aa ? codon.aa.name : 'Unknown'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Assembled peptide string */}
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                        <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Completed Peptide Primary Structure:</span>
+                        <div className="bg-white p-2.5 border border-slate-150 rounded font-mono text-xs font-black text-slate-800 break-all leading-normal flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-600 inline-block animate-pulse shrink-0" />
+                          {transResult.proteinPeptide}
+                        </div>
+                      </div>
+
+                      {/* Report generation button */}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={handleGenerateReport}
+                          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Generate Research Report
+                        </button>
+                      </div>
+
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[250px]">
+                      <Activity className="w-10 h-10 text-slate-300 animate-pulse" />
+                      <h4 className="text-sm font-bold text-slate-800">No Peptide Translated</h4>
+                      <p className="text-xs text-slate-400 max-w-xs font-medium">Input baseline templates on the left and click Translate to explore central dogma ribosomal transcription and peptide assemblies.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
+
+      {/* 4. Structured Research Report Viewer Overlay/Modal */}
+      {activeReport && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4" id="report-modal-overlay">
+          <div 
+            className="bg-white border border-slate-200 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-fade-in" 
+            id="report-modal-card"
+          >
+            {/* Modal Header */}
+            <div className="border-b border-slate-200 p-5 flex items-center justify-between bg-slate-50 rounded-t-2xl">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-teal-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Virtual Lab Research Report</h3>
+                  <p className="text-[10px] text-slate-400 font-bold font-mono">ID: {activeReport.id}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveReport(null)}
+                className="text-slate-400 hover:text-slate-700 text-xs font-bold px-2 py-1 rounded hover:bg-slate-100 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Modal Body (Scrollable report content) */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-700 leading-relaxed font-medium">
+              
+              <div className="flex justify-between items-center text-[10px] font-mono border-b border-slate-100 pb-2">
+                <span>Date generated: <strong>{activeReport.timestamp} UTC</strong></span>
+                <span className="text-teal-700 font-bold">VERIFIED GENOMICS RECORD</span>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Experiment Title:</span>
+                <h4 className="text-sm font-extrabold text-slate-900">{activeReport.experimentName}</h4>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Theoretical Objective:</span>
+                <p className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-600 italic">
+                  "{activeReport.researchQuestion}"
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Experimental Method:</span>
+                <p className="text-slate-600">{activeReport.method}</p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Quantitative Results summary:</span>
+                <p className="bg-teal-50/30 p-2.5 border border-teal-150 rounded-lg text-teal-950 font-bold font-mono">
+                  {activeReport.resultSummary}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Observation Logs:</span>
+                <p className="bg-slate-50 p-3 rounded-lg border border-slate-200 font-mono break-all text-slate-600 leading-normal">
+                  {activeReport.observation}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Scientific Interpretation & Conclusion:</span>
+                <p className="text-slate-600 leading-relaxed">{activeReport.conclusion}</p>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-400 leading-normal">
+                <strong>Disclaimer Statement:</strong> This bioinformatics tool is optimized purely for beginner-level genetic instruction. Computational results represent simulated properties and are not suitable for clinical research, medical diagnostics, or biological therapeutic decisions.
+              </div>
+
+            </div>
+
+            {/* Modal Footer actions */}
+            <div className="border-t border-slate-200 p-4 bg-slate-50 rounded-b-2xl flex flex-col sm:flex-row justify-between gap-3">
+              <button
+                type="button"
+                onClick={downloadReportFile}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-350 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+              >
+                <Download className="w-4 h-4" />
+                Download Report (.txt)
+              </button>
+
+              <div className="flex gap-2">
+                {onSaveReport && (
+                  <button
+                    type="button"
+                    onClick={handleSaveToPortfolio}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+                  >
+                    {saveSuccess ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Saved to Portfolio!
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Save to Portfolio (+150 XP)
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setActiveReport(null)}
+                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-3xs"
+                >
+                  Close Viewer
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 4. Sample Library & Biological Context Modal */}
+      {isLibraryModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in animate-duration-200" id="sample-library-modal-overlay">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up" id="sample-library-modal-container">
+            
+            {/* Modal Header */}
+            <div className="bg-slate-950 text-white p-5 flex items-center justify-between border-b border-slate-850">
+              <div className="flex items-center gap-2.5">
+                <BookOpen className="w-5 h-5 text-teal-400" />
+                <div>
+                  <h3 className="text-sm md:text-base font-extrabold tracking-tight">Genomic Reference Library & Biological Context</h3>
+                  <p className="text-[10px] md:text-[11px] text-slate-400 font-medium">Learn the clinical origin, genomic lengths, and cellular roles of biological templates.</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsLibraryModalOpen(false);
+                  setLibrarySearchQuery('');
+                  setSelectedLibraryCategory('All');
+                }}
+                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                aria-label="Close Reference Library"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="bg-slate-50 border-b border-slate-200 p-4 space-y-3">
+              <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-slate-400" />
+                  </span>
+                  <input
+                    type="text"
+                    value={librarySearchQuery}
+                    onChange={(e) => setLibrarySearchQuery(e.target.value)}
+                    placeholder="Search name, function, origin, codons..."
+                    className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder-slate-400 text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 shadow-3xs"
+                  />
+                </div>
+
+                {/* Category Filters */}
+                <div className="flex flex-wrap gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+                  {['All', 'Human', 'Plant', 'Bacterial', 'Viral', 'Clinical', 'Comparative'].map(category => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedLibraryCategory(category)}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap border ${
+                        selectedLibraryCategory === category
+                          ? 'bg-teal-650 text-white border-teal-650 shadow-3xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-800'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body / Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+              {(() => {
+                const filtered = DETAILED_SAMPLE_METADATA.filter(sample => {
+                  const matchesCategory = selectedLibraryCategory === 'All' || sample.category === selectedLibraryCategory;
+                  const query = librarySearchQuery.toLowerCase().trim();
+                  const matchesSearch = !query || 
+                    sample.name.toLowerCase().includes(query) ||
+                    sample.origin.toLowerCase().includes(query) ||
+                    sample.function.toLowerCase().includes(query) ||
+                    sample.scientificContext.toLowerCase().includes(query) ||
+                    sample.features.some(f => f.toLowerCase().includes(query));
+                  return matchesCategory && matchesSearch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-12 space-y-3 bg-white rounded-xl border border-slate-200 p-8">
+                      <HelpCircle className="w-10 h-10 text-slate-300 mx-auto" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-slate-800">No matching datasets found</p>
+                        <p className="text-xs text-slate-500">Try adjusting your keywords or switching filters to "All".</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 gap-4" id="modal-sample-grid">
+                    {filtered.map(sample => {
+                      // Styling based on categories
+                      let badgeStyle = 'bg-blue-50 text-blue-800 border-blue-200/50';
+                      if (sample.category === 'Plant') badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200/50';
+                      else if (sample.category === 'Bacterial') badgeStyle = 'bg-amber-50 text-amber-800 border-amber-200/50';
+                      else if (sample.category === 'Viral') badgeStyle = 'bg-purple-50 text-purple-800 border-purple-200/50';
+                      else if (sample.category === 'Clinical') badgeStyle = 'bg-rose-50 text-rose-800 border-rose-200/50';
+                      else if (sample.category === 'Comparative') badgeStyle = 'bg-slate-100 text-slate-850 border-slate-300/50';
+
+                      return (
+                        <div 
+                          key={sample.id} 
+                          className="bg-white border border-slate-200 rounded-xl p-5 shadow-3xs hover:border-teal-200 transition-all space-y-4"
+                          id={`modal-sample-${sample.id}`}
+                        >
+                          {/* Card Title Bar */}
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`text-[9px] font-bold font-mono px-2 py-0.5 border rounded-full ${badgeStyle}`}>
+                                  {sample.category}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-bold font-mono">
+                                  Length: {sample.length}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-extrabold text-slate-900">{sample.name}</h4>
+                            </div>
+                            <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200 self-start">
+                              {sample.origin}
+                            </span>
+                          </div>
+
+                          {/* Biological Information */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono block">Primary Biological Function:</span>
+                              <p className="text-slate-650 font-medium leading-relaxed bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">{sample.function}</p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono block">Bioinformatics Context:</span>
+                              <p className="text-slate-650 font-medium leading-relaxed bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">{sample.scientificContext}</p>
+                            </div>
+                          </div>
+
+                          {/* Sequence Preview Box */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono">Nucleotide Sequence Material:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(sample.sequenceA, sample.id)}
+                                className="text-[10px] text-teal-600 hover:text-teal-800 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedText === sample.id ? (
+                                  <>
+                                    <Check className="w-3 h-3" />
+                                    <span>Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy DNA</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <div className="p-3 bg-slate-950 text-emerald-400 rounded-lg font-mono text-[11px] break-all leading-normal border border-slate-800 shadow-inner">
+                              {sample.sequenceB ? (
+                                <div className="space-y-1.5">
+                                  <div>
+                                    <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Sequence A (Template):</span>
+                                    <span>{sample.sequenceA}</span>
+                                  </div>
+                                  <div className="border-t border-slate-800 pt-1.5">
+                                    <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Sequence B / Modified:</span>
+                                    <span>{sample.sequenceB}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span>{sample.sequenceA}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick features & load tools */}
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                            <div className="flex flex-wrap gap-1">
+                              {sample.features.map((f, i) => (
+                                <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-md">
+                                  • {f}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Load buttons */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {/* Option 1: DNA Analyzer */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAnalyzerSeq(sample.sequenceA);
+                                  setAnalyzerResult(null);
+                                  setActiveTab('analyzer');
+                                  setIsLibraryModalOpen(false);
+                                }}
+                                className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-850 hover:text-teal-900 border border-teal-200 hover:border-teal-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-3xs"
+                              >
+                                Analyze DNA
+                              </button>
+
+                              {/* Option 2: Translation */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTransSeq(sample.sequenceA);
+                                  setTransResult(null);
+                                  setActiveTab('translator');
+                                  setIsLibraryModalOpen(false);
+                                }}
+                                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-850 hover:text-indigo-900 border border-indigo-200 hover:border-indigo-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-3xs"
+                              >
+                                Translate Peptide
+                              </button>
+
+                              {/* Option 3: Alignment / Mutation (only if sequenceB is available) */}
+                              {sample.sequenceB && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCompSeqA(sample.sequenceA);
+                                      setCompSeqB(sample.sequenceB!);
+                                      setCompResult(null);
+                                      setActiveTab('comparator');
+                                      setIsLibraryModalOpen(false);
+                                    }}
+                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-850 hover:text-amber-900 border border-amber-200 hover:border-amber-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-3xs"
+                                  >
+                                    Align Pair
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMutOriginal(sample.sequenceA);
+                                      setMutModified(sample.sequenceB!);
+                                      setMutResult(null);
+                                      setActiveTab('mutation');
+                                      setIsLibraryModalOpen(false);
+                                    }}
+                                    className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-850 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-3xs"
+                                  >
+                                    Inspect Mutation
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 p-4 flex justify-between items-center">
+              <span className="text-[10px] text-slate-500 font-bold font-mono">
+                Total available datasets: {DETAILED_SAMPLE_METADATA.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLibraryModalOpen(false);
+                  setLibrarySearchQuery('');
+                  setSelectedLibraryCategory('All');
+                }}
+                className="px-4 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-3xs"
+              >
+                Close Library
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

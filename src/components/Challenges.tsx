@@ -482,6 +482,15 @@ export default function Challenges({ progress, onSolveChallenge }: ChallengesPro
                       </div>
                     </div>
 
+                    {selectedChallenge.scientificReasoning && (
+                      <div className="bg-slate-950 p-3 rounded-lg border border-slate-800/65 text-left text-xs">
+                        <span className="text-[9px] font-mono text-slate-400 font-bold uppercase tracking-wider text-teal-400">Clinical & Molecular Reasoning</span>
+                        <p className="text-slate-300 font-medium leading-relaxed pt-1">
+                          {selectedChallenge.scientificReasoning}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="text-[10px] text-slate-400 leading-normal font-medium italic pt-1 border-t border-slate-800 flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-teal-400" />
                       <span>The Scientific Concept: Molecular diagnostics depends on high-precision sequence integrity checking to identify subtle mutations.</span>

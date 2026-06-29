@@ -5,17 +5,25 @@ import { CheckCircle2, Lock, ArrowRight, BookOpen, Clock, Play, HelpCircle, Aler
 interface LearningPathProps {
   progress: UserProgress;
   onCompleteLesson: (lessonId: string, xpReward: number) => void;
+  onUpdateProfile?: (updates: Partial<UserProgress>) => void;
+  onCompleteQuiz?: (lessonId: string, score: number, total: number, correctAnswers: number) => void;
 }
 
-export default function LearningPath({ progress, onCompleteLesson }: LearningPathProps) {
+export default function LearningPath({ progress, onCompleteLesson, onUpdateProfile, onCompleteQuiz }: LearningPathProps) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [activeLessonTab, setActiveLessonTab] = useState<'read' | 'diagram' | 'quiz'>('read');
-  const [selectedLevelFilter, setSelectedLevelFilter] = useState<1 | 2 | 3>(1);
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState<1 | 2 | 3 | 4>(() => {
+    return (progress.learningLevel as 1 | 2 | 3 | 4) || 1;
+  });
   
   // Quiz states
   const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState<boolean>(false);
   const [quizResult, setQuizResult] = useState<boolean | null>(null);
+
+  // Mini activity states
+  const [miniActivityAnswer, setMiniActivityAnswer] = useState<string | null>(null);
+  const [miniActivitySubmitted, setMiniActivitySubmitted] = useState<boolean>(false);
 
   // Database simulator state (for Level 2 Database lesson diagram)
   const [dbSearchQuery, setDbSearchQuery] = useState('');
@@ -66,6 +74,8 @@ export default function LearningPath({ progress, onCompleteLesson }: LearningPat
     setQuizAnswer(null);
     setQuizSubmitted(false);
     setQuizResult(null);
+    setMiniActivityAnswer(null);
+    setMiniActivitySubmitted(false);
     setDbSearchQuery('');
     setDbSearchResult(null);
     setTranscriptionStep(0);
@@ -77,6 +87,10 @@ export default function LearningPath({ progress, onCompleteLesson }: LearningPat
     setQuizSubmitted(true);
     const isCorrect = quizAnswer === selectedLesson.content.quickQuiz.correctIndex;
     setQuizResult(isCorrect);
+    
+    // Auto-save quiz progress
+    onCompleteQuiz?.(selectedLesson.id, isCorrect ? 100 : 0, 100, isCorrect ? 1 : 0);
+
     if (isCorrect && !progress.completedLessons.includes(selectedLesson.id)) {
       onCompleteLesson(selectedLesson.id, 50); // Give 50 XP
     }
@@ -88,7 +102,8 @@ export default function LearningPath({ progress, onCompleteLesson }: LearningPat
   const levelDescriptions = {
     1: "Foundational genetics concepts: Understand complementary base chemistry, genes, and transcription.",
     2: "Clinical database registries, standard accession formats, and automated Sanger reads.",
-    3: "Quantitative sequence alignment metrics, dynamic penalty parameters, and algorithms."
+    3: "Quantitative sequence alignment metrics, dynamic penalty parameters, and algorithms.",
+    4: "Metagenomic tracking, oncology driver mutations, and targeted genetic engineering via CRISPR-Cas9."
   };
 
   const transcriptionData = [
@@ -111,25 +126,26 @@ export default function LearningPath({ progress, onCompleteLesson }: LearningPat
             </div>
             
             <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-start" id="level-buttons-row">
-              {([1, 2, 3] as const).map(num => (num === selectedLevelFilter ? (
-                <button
-                  key={num}
-                  onClick={() => setSelectedLevelFilter(num)}
-                  className="px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer bg-white text-teal-700 border border-slate-200/60 shadow-xs"
-                  id={`btn-level-${num}`}
-                >
-                  Level {num}
-                </button>
-              ) : (
-                <button
-                  key={num}
-                  onClick={() => setSelectedLevelFilter(num)}
-                  className="px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer text-slate-500 hover:text-slate-800"
-                  id={`btn-level-${num}`}
-                >
-                  Level {num}
-                </button>
-              )))}
+              {([1, 2, 3, 4] as const).map(num => {
+                const isActive = num === selectedLevelFilter;
+                return (
+                  <button
+                    key={num}
+                    onClick={() => {
+                      setSelectedLevelFilter(num);
+                      onUpdateProfile?.({ learningLevel: num });
+                    }}
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-teal-700 border border-slate-200/60 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    id={`btn-level-${num}`}
+                  >
+                    Level {num}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -238,11 +254,98 @@ export default function LearningPath({ progress, onCompleteLesson }: LearningPat
           <div className="bg-white border border-slate-200 rounded-xl p-6 md:p-8 shadow-xs" id="lesson-tab-content">
             {activeLessonTab === 'read' && (
               <div className="space-y-6 text-slate-600 max-w-4xl" id="panel-read">
+                {selectedLesson.content.learningObjective && (
+                  <div className="p-4 rounded-xl bg-teal-50/40 border border-teal-100/60 flex gap-3 text-slate-800">
+                    <BookOpen className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-teal-900 uppercase tracking-wide">Learning Objective</h4>
+                      <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                        {selectedLesson.content.learningObjective}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {selectedLesson.content.paragraphs.map((p, i) => (
                   <p key={i} className="leading-relaxed text-sm">{p}</p>
                 ))}
+
+                {selectedLesson.content.keyConcepts && selectedLesson.content.keyConcepts.length > 0 && (
+                  <div className="mt-8 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Key Scientific Concepts</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {selectedLesson.content.keyConcepts.map((concept, idx) => (
+                        <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200/80 flex gap-2.5">
+                          <span className="font-mono text-xs text-teal-600 font-bold">0{idx + 1}</span>
+                          <p className="text-xs text-slate-600 leading-normal">{concept}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedLesson.content.miniActivity && (
+                  <div className="mt-8 border border-slate-200/80 rounded-xl p-5 bg-teal-50/25 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle className="w-4 h-4 text-teal-600" />
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Mini Activity: Active Recall Check</h4>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-700 leading-normal">{selectedLesson.content.miniActivity.prompt}</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedLesson.content.miniActivity.options.map((opt, idx) => {
+                        const isSelected = miniActivityAnswer === opt;
+                        const isCorrect = opt === selectedLesson.content.miniActivity.correctAnswer;
+                        return (
+                          <button
+                            key={idx}
+                            disabled={miniActivitySubmitted}
+                            onClick={() => setMiniActivityAnswer(opt)}
+                            className={`p-3 rounded-lg border text-left text-xs transition-all font-bold cursor-pointer ${
+                              isSelected
+                                ? miniActivitySubmitted
+                                  ? isCorrect
+                                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                                    : 'bg-rose-600 border-rose-600 text-white shadow-xs'
+                                  : 'bg-teal-600 border-teal-600 text-white shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 shadow-2xs'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {!miniActivitySubmitted ? (
+                      <button
+                        disabled={!miniActivityAnswer}
+                        onClick={() => setMiniActivitySubmitted(true)}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                      >
+                        Submit Answer
+                      </button>
+                    ) : (
+                      <div className="p-3.5 rounded-lg bg-white border border-slate-200/80 text-xs text-slate-600 animate-fade-in space-y-1">
+                        {miniActivityAnswer === selectedLesson.content.miniActivity.correctAnswer ? (
+                          <span className="text-emerald-700 font-extrabold uppercase text-[10px] tracking-wider block">Correct Response!</span>
+                        ) : (
+                          <span className="text-rose-700 font-extrabold uppercase text-[10px] tracking-wider block">Review Recommended</span>
+                        )}
+                        <p className="font-medium text-slate-600">{selectedLesson.content.miniActivity.feedback}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selectedLesson.content.summary && (
+                  <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-200/80 text-slate-700">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Lesson Summary</span>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">{selectedLesson.content.summary}</p>
+                  </div>
+                )}
                 
-                <div className="p-4 rounded-lg bg-teal-50 border border-teal-100/60 flex gap-3 mt-6 text-slate-800">
+                <div className="p-4 rounded-lg bg-teal-50/50 border border-teal-100/40 flex gap-3 mt-6 text-slate-850">
                   <BookOpen className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <h4 className="text-xs font-bold text-teal-800 uppercase tracking-wide">Biological Annotator Guideline</h4>
@@ -266,6 +369,20 @@ export default function LearningPath({ progress, onCompleteLesson }: LearningPat
 
             {activeLessonTab === 'diagram' && (
               <div className="space-y-6" id="panel-diagram">
+                {selectedLesson.content.interactiveExample && (
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex gap-3 text-left">
+                    <div className="bg-teal-600 text-white rounded-lg p-2 h-fit flex items-center justify-center">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">Interactive Simulator</h4>
+                      <h3 className="text-sm font-extrabold text-teal-800 tracking-tight mt-0.5">{selectedLesson.content.interactiveExample.title}</h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        {selectedLesson.content.interactiveExample.description}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {/* 1. DNA Structure Base-Pairing Diagram */}
                 {selectedLesson.content.diagramType === 'dna_structure' && (
                   <div className="space-y-6 text-center">

@@ -10,11 +10,12 @@ interface ResearchJourneyProps {
   progress: UserProgress;
   onResetProgress: () => void;
   onDeleteReport?: (reportId: string) => void;
+  onUpdateProfile?: (updates: Partial<UserProgress>) => void;
 }
 
-export default function ResearchJourney({ progress, onResetProgress, onDeleteReport }: ResearchJourneyProps) {
+export default function ResearchJourney({ progress, onResetProgress, onDeleteReport, onUpdateProfile }: ResearchJourneyProps) {
   const [investigatorName, setInvestigatorName] = useState<string>(() => {
-    return localStorage.getItem('biobridge_investigator_name') || 'Ayush Kumar';
+    return progress.studentName || localStorage.getItem('biobridge_investigator_name') || 'Ayush Kumar';
   });
   const [isEditingName, setIsEditingName] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export default function ResearchJourney({ progress, onResetProgress, onDeleteRep
   const saveName = (name: string) => {
     setInvestigatorName(name);
     localStorage.setItem('biobridge_investigator_name', name);
+    onUpdateProfile?.({ studentName: name });
     setIsEditingName(false);
   };
 

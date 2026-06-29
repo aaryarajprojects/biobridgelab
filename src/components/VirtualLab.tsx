@@ -3,7 +3,7 @@ import {
   FlaskConical, AlertCircle, RefreshCw, Activity, Copy, 
   CheckCircle2, HelpCircle, Download, BookOpen, Search, 
   GitCompare, Layers, Info, Sparkles, FileText, Check, ArrowRight,
-  ClipboardList, X
+  ClipboardList, X, History, Database
 } from 'lucide-react';
 import { SavedReport, UserProgress } from '../types';
 
@@ -412,6 +412,17 @@ const DETAILED_SAMPLE_METADATA: DetailedSampleMeta[] = [
   }
 ];
 
+export interface PastRun {
+  id: string;
+  timestamp: string;
+  tool: 'analyzer' | 'comparator' | 'mutation' | 'translator';
+  toolName: string;
+  sequenceA: string;
+  sequenceB?: string;
+  summary: string;
+  details: string;
+}
+
 interface VirtualLabProps {
   progress?: UserProgress;
   onSaveReport?: (report: SavedReport) => void;
@@ -421,6 +432,41 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   // Tabs for the "Research Toolkit"
   const [activeTab, setActiveTab] = useState<'analyzer' | 'comparator' | 'mutation' | 'translator'>('analyzer');
   
+  // Dashboard & Past Runs States
+  const [isDashboardExpanded, setIsDashboardExpanded] = useState<boolean>(false);
+  const [dashboardSearch, setDashboardSearch] = useState<string>('');
+  const [dashboardCategory, setDashboardCategory] = useState<string>('All');
+  const [pastRuns, setPastRuns] = useState<PastRun[]>([
+    {
+      id: 'RUN-48192',
+      timestamp: '2026-06-29 10:42:15',
+      tool: 'analyzer',
+      toolName: 'DNA Analyzer',
+      sequenceA: 'AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGGTCTGTTCCAAGGGCCTTTGCGTCAGGTGGGCTCAGG',
+      summary: 'Length: 78 bp | GC: 64.1% | AT: 35.9%',
+      details: 'A: 13, T: 15, G: 25, C: 25. Complement and reverse strands successfully modeled.'
+    },
+    {
+      id: 'RUN-91023',
+      timestamp: '2026-06-29 10:55:04',
+      tool: 'mutation',
+      toolName: 'Mutation Explorer',
+      sequenceA: 'ATGGTGCACCTGACTCCTGAGGAGAAG',
+      sequenceB: 'ATGGTGCACCTGACTCCTGTGGAGAAG',
+      summary: 'Type: Missense Substitution | Severity: Moderate',
+      details: 'Substitution at codon 6: GAG → GTG changes Glutamic Acid (E) to Valine (V). Common sickle cell indicator.'
+    },
+    {
+      id: 'RUN-31849',
+      timestamp: '2026-06-29 11:02:40',
+      tool: 'translator',
+      toolName: 'Translation Explorer',
+      sequenceA: 'ATGGCTACAGGCTCCCGGACGTCCCTGCTCCTGGCTTTTGGCCTGCTCTGCCTGCCCTGGCTTCAAGAGGGCAGTGCCTAA',
+      summary: 'Codons: 27 | Peptide: M-A-T-G-S-R-T-S-L-L-L-A-F-G-L-L-C-L-P-W-L-Q-E-G-S-A-STOP',
+      details: 'Transcribed mRNA and successfully synthesized polypeptide chain with matching initiator and terminator codes.'
+    }
+  ]);
+
   // Notification States
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -510,7 +556,7 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
     const complement = cleaned.split('').map(char => complementMap[char] || char).join('');
     const reverseComplement = complement.split('').reverse().join('');
 
-    setAnalyzerResult({
+    const resultObj = {
       sequence: cleaned,
       length: len,
       counts: { A: countA, T: countT, G: countG, C: countC },
@@ -524,7 +570,23 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       atPercent,
       complement,
       reverseComplement
-    });
+    };
+
+    setAnalyzerResult(resultObj);
+
+    // Track in Past Runs
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const runId = `RUN-${Math.floor(Math.random() * 90000) + 10000}`;
+    const newRun: PastRun = {
+      id: runId,
+      timestamp,
+      tool: 'analyzer',
+      toolName: 'DNA Analyzer',
+      sequenceA: cleaned,
+      summary: `Length: ${len} bp | GC: ${gcPercent}% | AT: ${atPercent}%`,
+      details: `A: ${countA}, T: ${countT}, G: ${countG}, C: ${countC}. Complement sequence generated.`
+    };
+    setPastRuns(prev => [newRun, ...prev]);
   };
 
   // ============================================================================
@@ -568,7 +630,7 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
 
     const similarity = parseFloat(((matches / maxLen) * 100).toFixed(2));
 
-    setCompResult({
+    const resultObj = {
       seqA: cleanedA,
       seqB: cleanedB,
       paddedA,
@@ -579,7 +641,24 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       gaps,
       similarity,
       differences: diffs
-    });
+    };
+
+    setCompResult(resultObj);
+
+    // Track in Past Runs
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const runId = `RUN-${Math.floor(Math.random() * 90000) + 10000}`;
+    const newRun: PastRun = {
+      id: runId,
+      timestamp,
+      tool: 'comparator',
+      toolName: 'Sequence Comparator',
+      sequenceA: cleanedA,
+      sequenceB: cleanedB,
+      summary: `Similarity: ${similarity}% | Matches: ${matches} | Mismatches: ${mismatches}`,
+      details: `Aligned length: ${maxLen} bp with ${gaps} gaps found.`
+    };
+    setPastRuns(prev => [newRun, ...prev]);
   };
 
   // ============================================================================
@@ -672,7 +751,7 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       }
     }
 
-    setMutResult({
+    const resultObj = {
       orig,
       mut,
       origLen,
@@ -683,7 +762,24 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       severity,
       explanation,
       differences: diffList
-    });
+    };
+
+    setMutResult(resultObj);
+
+    // Track in Past Runs
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const runId = `RUN-${Math.floor(Math.random() * 90000) + 10000}`;
+    const newRun: PastRun = {
+      id: runId,
+      timestamp,
+      tool: 'mutation',
+      toolName: 'Mutation Explorer',
+      sequenceA: orig,
+      sequenceB: mut,
+      summary: `Type: ${mutationType} | Severity: ${severity}`,
+      details: `Original peptide: [${origProt}] | Mutated: [${mutProt}]. ${explanation}`
+    };
+    setPastRuns(prev => [newRun, ...prev]);
   };
 
   // ============================================================================
@@ -710,13 +806,29 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
 
     const proteinPeptide = codons.map(c => c.aa ? c.aa.symbol : '?').join('-');
 
-    setTransResult({
+    const resultObj = {
       sequence: cleaned,
       rnaSeq,
       codons,
       proteinPeptide,
       codonCount: codons.length
-    });
+    };
+
+    setTransResult(resultObj);
+
+    // Track in Past Runs
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const runId = `RUN-${Math.floor(Math.random() * 90000) + 10000}`;
+    const newRun: PastRun = {
+      id: runId,
+      timestamp,
+      tool: 'translator',
+      toolName: 'Translation Explorer',
+      sequenceA: cleaned,
+      summary: `Codons: ${codons.length} triplets | Protein length: ${proteinPeptide.split('-').length} aa`,
+      details: `Polypeptide chain: ${proteinPeptide}. mRNA transcript: ${rnaSeq}`
+    };
+    setPastRuns(prev => [newRun, ...prev]);
   };
 
   // Load a reference sample from library
@@ -739,6 +851,201 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       setMutResult(null);
     } else if (activeTab === 'translator') {
       setTransSeq(sample.sequence.substring(0, 27));
+      setTransResult(null);
+    }
+  };
+
+  // Load a past computational run back into the workspace and trigger calculation
+  const loadPastRun = (run: PastRun) => {
+    setActiveTab(run.tool);
+    if (run.tool === 'analyzer') {
+      setAnalyzerSeq(run.sequenceA);
+      setTimeout(() => {
+        const cleaned = run.sequenceA;
+        const len = cleaned.length;
+        const countA = (cleaned.match(/A/g) || []).length;
+        const countT = (cleaned.match(/T/g) || []).length;
+        const countG = (cleaned.match(/G/g) || []).length;
+        const countC = (cleaned.match(/C/g) || []).length;
+        const gcPercent = parseFloat((((countG + countC) / len) * 100).toFixed(2));
+        const atPercent = parseFloat((((countA + countT) / len) * 100).toFixed(2));
+        const complementMap: Record<string, string> = { 'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G' };
+        const complement = cleaned.split('').map(char => complementMap[char] || char).join('');
+        const reverseComplement = complement.split('').reverse().join('');
+        setAnalyzerResult({
+          sequence: cleaned,
+          length: len,
+          counts: { A: countA, T: countT, G: countG, C: countC },
+          frequencies: {
+            A: parseFloat(((countA / len) * 100).toFixed(1)),
+            T: parseFloat(((countT / len) * 100).toFixed(1)),
+            G: parseFloat(((countG / len) * 100).toFixed(1)),
+            C: parseFloat(((countC / len) * 100).toFixed(1))
+          },
+          gcPercent,
+          atPercent,
+          complement,
+          reverseComplement
+        });
+      }, 50);
+    } else if (run.tool === 'comparator' && run.sequenceB) {
+      setCompSeqA(run.sequenceA);
+      setCompSeqB(run.sequenceB);
+      setTimeout(() => {
+        const cleanedA = run.sequenceA;
+        const cleanedB = run.sequenceB!;
+        const maxLen = Math.max(cleanedA.length, cleanedB.length);
+        const paddedA = cleanedA.padEnd(maxLen, '-');
+        const paddedB = cleanedB.padEnd(maxLen, '-');
+        let matches = 0;
+        let mismatches = 0;
+        let gaps = 0;
+        const diffs = [];
+        for (let i = 0; i < maxLen; i++) {
+          const a = paddedA[i];
+          const b = paddedB[i];
+          if (a === '-' || b === '-') {
+            gaps++;
+            diffs.push({ pos: i + 1, charA: a, charB: b });
+          } else if (a === b) {
+            matches++;
+          } else {
+            mismatches++;
+            diffs.push({ pos: i + 1, charA: a, charB: b });
+          }
+        }
+        const similarity = parseFloat(((matches / maxLen) * 100).toFixed(2));
+        setCompResult({
+          seqA: cleanedA,
+          seqB: cleanedB,
+          paddedA,
+          paddedB,
+          length: maxLen,
+          matches,
+          mismatches,
+          gaps,
+          similarity,
+          differences: diffs
+        });
+      }, 50);
+    } else if (run.tool === 'mutation' && run.sequenceB) {
+      setMutOriginal(run.sequenceA);
+      setMutModified(run.sequenceB);
+      setTimeout(() => {
+        const orig = run.sequenceA;
+        const mut = run.sequenceB!;
+        const origLen = orig.length;
+        const mutLen = mut.length;
+        const isSameLen = origLen === mutLen;
+        const origProt = translateSeq(orig);
+        const mutProt = translateSeq(mut);
+        let mutationType = 'Indel / Frameshift';
+        let severity = 'Neutral';
+        let explanation = '';
+        const diffList = [];
+        if (isSameLen) {
+          for (let i = 0; i < origLen; i++) {
+            if (orig[i] !== mut[i]) {
+              diffList.push({ pos: i + 1, from: orig[i], to: mut[i] });
+            }
+          }
+          if (diffList.length === 0) {
+            mutationType = 'Homologous Sequence (No Mutation)';
+            severity = 'None';
+            explanation = 'The analyzed strands are perfectly identical. No biological mutation was located.';
+          } else if (diffList.length === 1) {
+            if (origProt === mutProt) {
+              mutationType = 'Synonymous (Silent) Substitution';
+              severity = 'Low (No Effect)';
+              explanation = `A single nucleotide substitution occurred at position ${diffList[0].pos} (${diffList[0].from} → ${diffList[0].to}). Because of codon redundancy, the translated amino acid remains identical (${origProt}).`;
+            } else if (mutProt.includes('STOP') && !origProt.includes('STOP')) {
+              mutationType = 'Nonsense Substitution';
+              severity = 'High (Severe truncation)';
+              explanation = `A premature STOP codon was introduced at position ${diffList[0].pos}.`;
+            } else {
+              mutationType = 'Missense Substitution';
+              severity = 'Moderate';
+              explanation = `A single nucleotide substitution at position ${diffList[0].pos} altered the codon (${origProt} → ${mutProt}).`;
+            }
+          } else {
+            mutationType = 'Multiple Point Substitutions';
+            severity = 'Variable';
+            explanation = `Detected ${diffList.length} distinct point nucleotide differences.`;
+          }
+        } else {
+          const lenDiff = Math.abs(origLen - mutLen);
+          if (mutLen > origLen) {
+            mutationType = `Frameshift Insertion (+${lenDiff} bp)`;
+            severity = 'High';
+            explanation = `An insertion of ${lenDiff} base pairs shifts the reading frame.`;
+          } else {
+            if (lenDiff % 3 === 0) {
+              mutationType = `In-Frame Codon Deletion (-${lenDiff} bp)`;
+              severity = 'Moderate';
+              explanation = `Exactly ${lenDiff / 3} codon(s) were deleted.`;
+            } else {
+              mutationType = `Frameshift Deletion (-${lenDiff} bp)`;
+              severity = 'High';
+              explanation = `A deletion of ${lenDiff} base pairs occurred.`;
+            }
+          }
+        }
+        setMutResult({
+          orig,
+          mut,
+          origLen,
+          mutLen,
+          origProt,
+          mutProt,
+          mutationType,
+          severity,
+          explanation,
+          differences: diffList
+        });
+      }, 50);
+    } else if (run.tool === 'translator') {
+      setTransSeq(run.sequenceA);
+      setTimeout(() => {
+        const cleaned = run.sequenceA;
+        const codons = [];
+        const rnaSeq = cleaned.replace(/T/g, 'U');
+        for (let i = 0; i < cleaned.length; i += 3) {
+          const dnaCodon = cleaned.substring(i, i + 3);
+          if (dnaCodon.length === 3) {
+            const rnaCodon = rnaSeq.substring(i, i + 3);
+            const aa = CODON_TABLE[dnaCodon] || null;
+            codons.push({ dna: dnaCodon, rna: rnaCodon, aa });
+          }
+        }
+        const proteinPeptide = codons.map(c => c.aa ? c.aa.symbol : '?').join('-');
+        setTransResult({
+          sequence: cleaned,
+          rnaSeq,
+          codons,
+          proteinPeptide,
+          codonCount: codons.length
+        });
+      }, 50);
+    }
+  };
+
+  // Load a detailed reference sample from the Dashboard directory
+  const handleLoadDashboardSample = (sample: DetailedSampleMeta) => {
+    const targetTool = sample.suggestedTool === 'all' ? 'analyzer' : sample.suggestedTool;
+    setActiveTab(targetTool);
+    if (targetTool === 'analyzer') {
+      setAnalyzerSeq(sample.sequenceA);
+      setAnalyzerResult(null);
+    } else if (targetTool === 'comparator' && sample.sequenceB) {
+      setCompSeqA(sample.sequenceA);
+      setCompSeqB(sample.sequenceB);
+      setCompResult(null);
+    } else if (targetTool === 'mutation' && sample.sequenceB) {
+      setMutOriginal(sample.sequenceA);
+      setMutModified(sample.sequenceB);
+      setMutResult(null);
+    } else if (targetTool === 'translator') {
+      setTransSeq(sample.sequenceA);
       setTransResult(null);
     }
   };
@@ -857,7 +1164,7 @@ ${activeReport.conclusion}
   };
 
   return (
-    <div className="space-y-8 animate-fade-in" id="virtual-dna-lab-container">
+    <div className="space-y-8 animate-fade-in" id="virtual-lab-container" data-dna-lab-id="virtual-dna-lab-container">
       
       {/* 1. Header Section */}
       <div className="border-b border-slate-200 pb-5 space-y-2" id="lab-header">
@@ -920,6 +1227,265 @@ ${activeReport.conclusion}
           <Info className="w-3.5 h-3.5" />
           <span>View All Samples & Details</span>
         </button>
+      </div>
+
+      {/* 2.5 Toggleable Lab Data & History Dashboard */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 space-y-4 shadow-3xs" id="all-data-dashboard-card">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 bg-teal-50 rounded-xl border border-teal-100">
+              <Database className="w-5 h-5 text-teal-600" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm md:text-base font-extrabold text-slate-900 flex items-center gap-2">
+                Experiment Records & Reference Dashboard
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Access a toggleable view of all active analysis sessions, history logs, and historical clinical sequence samples.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsDashboardExpanded(!isDashboardExpanded)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 border self-start sm:self-center shrink-0 ${
+              isDashboardExpanded 
+                ? 'bg-slate-900 text-white border-slate-900 shadow-sm hover:bg-slate-850' 
+                : 'bg-teal-600 hover:bg-teal-700 text-white border-teal-650 shadow-3xs hover:shadow-2xs'
+            }`}
+            id="toggle-data-dashboard-btn"
+          >
+            <History className="w-4 h-4" />
+            <span>{isDashboardExpanded ? 'Hide Data Dashboard' : 'Open All-Data Dashboard'}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${isDashboardExpanded ? 'bg-teal-650 text-white' : 'bg-white text-teal-700'}`}>
+              {pastRuns.length} Runs
+            </span>
+          </button>
+        </div>
+
+        {/* Dashboard Content Panel */}
+        {isDashboardExpanded && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 border-t border-slate-100 animate-scale-up" id="dashboard-expanded-view">
+            
+            {/* Column A: Past Computational Runs Log */}
+            <div className="lg:col-span-5 bg-slate-50/50 border border-slate-200/60 rounded-xl p-4.5 space-y-4 flex flex-col justify-between" id="past-runs-column">
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between border-b border-slate-200/65 pb-2">
+                  <div className="flex items-center gap-2">
+                    <History className="w-4 h-4 text-slate-500" />
+                    <span className="text-xs font-bold text-slate-800">Past Computational Runs ({pastRuns.length})</span>
+                  </div>
+                  {pastRuns.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPastRuns([])}
+                      className="text-[10px] text-rose-600 hover:text-rose-800 font-bold hover:underline transition-all cursor-pointer"
+                    >
+                      Clear Log
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1" id="past-runs-list">
+                  {pastRuns.length === 0 ? (
+                    <div className="text-center py-10 space-y-2 bg-white rounded-lg border border-slate-150 p-4">
+                      <HelpCircle className="w-8 h-8 text-slate-350 mx-auto" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">No session logs recorded</p>
+                        <p className="text-[10px] text-slate-450">Execute any tool below to automatically store local session results.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    pastRuns.map((run, idx) => {
+                      let toolColor = 'bg-teal-50 border-teal-200 text-teal-850';
+                      if (run.tool === 'comparator') toolColor = 'bg-indigo-50 border-indigo-200 text-indigo-850';
+                      else if (run.tool === 'mutation') toolColor = 'bg-rose-50 border-rose-200 text-rose-850';
+                      else if (run.tool === 'translator') toolColor = 'bg-amber-50 border-amber-200 text-amber-850';
+
+                      return (
+                        <div 
+                          key={run.id || idx}
+                          className="bg-white border border-slate-200 hover:border-slate-300 rounded-lg p-3 space-y-2.5 shadow-3xs transition-all relative group"
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border font-mono ${toolColor}`}>
+                                {run.toolName}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono font-bold">
+                                {run.id}
+                              </span>
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-medium font-mono">
+                              {run.timestamp.split(' ')[1] || run.timestamp}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1 text-xs">
+                            <div className="font-bold text-slate-850 tracking-tight">{run.summary}</div>
+                            <div className="text-[10px] font-mono bg-slate-50 p-1.5 rounded text-slate-500 max-h-16 overflow-y-auto break-all border border-slate-100">
+                              <span className="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">Input Strand:</span>
+                              {run.sequenceA.length > 40 ? `${run.sequenceA.substring(0, 38)}...` : run.sequenceA}
+                              {run.sequenceB && (
+                                <>
+                                  <span className="text-[9px] uppercase font-bold text-slate-400 block mt-1.5 mb-0.5">Strand B:</span>
+                                  {run.sequenceB.length > 40 ? `${run.sequenceB.substring(0, 38)}...` : run.sequenceB}
+                                </>
+                              )}
+                            </div>
+                            <p className="text-[10.5px] leading-relaxed text-slate-600 font-medium">{run.details}</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => loadPastRun(run)}
+                            className="w-full py-1 bg-slate-50 hover:bg-teal-50 hover:text-teal-900 hover:border-teal-300 text-slate-700 border border-slate-200 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <RefreshCw className="w-2.5 h-2.5 text-slate-400 group-hover:text-teal-650" />
+                            Load Run into Workspace
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {pastRuns.length > 0 && (
+                <div className="bg-white border border-slate-150 rounded-lg p-2.5 text-[10px] text-slate-500 leading-normal font-medium mt-3">
+                  <span className="font-bold text-slate-700 font-mono uppercase text-[9px] block mb-0.5">• Quick-Rerun:</span>
+                  Clicking "Load Run" restores the sequences directly and switches to the correct workspace tab instantly.
+                </div>
+              )}
+            </div>
+
+            {/* Column B: Historical Experiment Samples Directory */}
+            <div className="lg:col-span-7 bg-slate-50/50 border border-slate-200/60 rounded-xl p-4.5 space-y-4 flex flex-col" id="historical-directory-column">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/65 pb-2">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-bold text-slate-800">Historical Genomic Templates & Clinical Variants</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-teal-700 bg-teal-50 px-2 py-0.5 border border-teal-150 rounded-full">
+                  {DETAILED_SAMPLE_METADATA.length} Reference Materials
+                </span>
+              </div>
+
+              {/* Dashboard search filters */}
+              <div className="space-y-2.5">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                    <Search className="h-3.5 w-3.5 text-slate-400" />
+                  </span>
+                  <input
+                    type="text"
+                    value={dashboardSearch}
+                    onChange={(e) => setDashboardSearch(e.target.value)}
+                    placeholder="Search templates by origin, codons, function, features..."
+                    className="w-full pl-8 pr-3 py-1 bg-white border border-slate-200 rounded-lg text-xs placeholder-slate-400 text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 shadow-3xs"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-1 pb-1">
+                  {['All', 'Human', 'Plant', 'Bacterial', 'Viral', 'Clinical', 'Comparative'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setDashboardCategory(cat)}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all cursor-pointer whitespace-nowrap border ${
+                        dashboardCategory === cat
+                          ? 'bg-teal-600 text-white border-teal-650 shadow-3xs'
+                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-800'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Matched templates directory list */}
+              <div className="space-y-3.5 max-h-[290px] overflow-y-auto pr-1 flex-1" id="dashboard-samples-list">
+                {(() => {
+                  const filtered = DETAILED_SAMPLE_METADATA.filter(sample => {
+                    const matchesCategory = dashboardCategory === 'All' || sample.category === dashboardCategory;
+                    const query = dashboardSearch.toLowerCase().trim();
+                    const matchesSearch = !query ||
+                      sample.name.toLowerCase().includes(query) ||
+                      sample.origin.toLowerCase().includes(query) ||
+                      sample.function.toLowerCase().includes(query) ||
+                      sample.scientificContext.toLowerCase().includes(query) ||
+                      sample.features.some(f => f.toLowerCase().includes(query));
+                    return matchesCategory && matchesSearch;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-10 bg-white rounded-lg border border-slate-150 p-4">
+                        <p className="text-xs font-bold text-slate-700">No matching genomic templates found</p>
+                        <p className="text-[10px] text-slate-450">Try removing keywords or changing category filters.</p>
+                      </div>
+                    );
+                  }
+
+                  return filtered.map(sample => {
+                    let badgeStyle = 'bg-blue-50 text-blue-800 border-blue-150/50';
+                    if (sample.category === 'Plant') badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-150/50';
+                    else if (sample.category === 'Bacterial') badgeStyle = 'bg-amber-50 text-amber-800 border-amber-150/50';
+                    else if (sample.category === 'Viral') badgeStyle = 'bg-purple-50 text-purple-800 border-purple-150/50';
+                    else if (sample.category === 'Clinical') badgeStyle = 'bg-rose-50 text-rose-800 border-rose-150/50';
+                    else if (sample.category === 'Comparative') badgeStyle = 'bg-slate-100 text-slate-850 border-slate-300/50';
+
+                    return (
+                      <div 
+                        key={sample.id}
+                        className="bg-white border border-slate-200 rounded-lg p-3.5 space-y-3 hover:border-teal-200 transition-all flex flex-col justify-between"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border font-mono ${badgeStyle}`}>
+                              {sample.category}
+                            </span>
+                            <span className="text-[9.5px] text-slate-400 font-bold font-mono">
+                              Length: {sample.length}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <h4 className="text-[12px] font-extrabold text-slate-900">{sample.name}</h4>
+                            <p className="text-[10px] text-slate-450 font-mono font-bold leading-none">{sample.origin}</p>
+                            <p className="text-[11px] text-slate-600 font-medium leading-relaxed line-clamp-2 mt-1">{sample.function}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 border-t border-slate-50 pt-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {sample.features.slice(0, 1).map((f, i) => (
+                              <span key={i} className="text-[8.5px] font-bold text-slate-400 bg-slate-50 border border-slate-150 px-1.5 py-0.5 rounded">
+                                {f}
+                              </span>
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleLoadDashboardSample(sample)}
+                            className="px-2.5 py-1 bg-teal-50 hover:bg-teal-600 hover:text-white border border-teal-200 hover:border-teal-600 rounded-md text-[10.5px] font-bold text-teal-800 transition-all cursor-pointer flex items-center gap-1 shrink-0 shadow-3xs"
+                          >
+                            <span>Load & Go to Tool</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
       {/* 3. Bioinformatics Toolbox (Research Toolkit Tabs) */}

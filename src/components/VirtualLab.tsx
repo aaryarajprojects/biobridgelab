@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlaskConical, AlertCircle, RefreshCw, Activity, Copy, CheckCircle2, HelpCircle } from 'lucide-react';
+import { FlaskConical, AlertCircle, RefreshCw, Activity, Copy, CheckCircle2, HelpCircle, Download } from 'lucide-react';
 
 interface AnalysisResult {
   length: number;
@@ -108,6 +108,54 @@ export default function VirtualLab() {
     }).catch(err => {
       console.error('Failed to copy text: ', err);
     });
+  };
+
+  const handleDownloadReport = () => {
+    if (!analysis) return;
+    
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    
+    const reportText = `================================================================
+                    BIOBRIDGE LAB DIAGNOSTICS
+                   DNA SEQUENCE ANALYSIS REPORT
+================================================================
+Report Date: ${timestamp} UTC
+Platform: BioBridge Lab Education Systems
+
+[DNA SEQUENCE METRICS]
+Sequence Length : ${analysis.length} bp
+GC Content      : ${analysis.gcPercent}%
+AT Content      : ${analysis.atPercent}%
+
+[NUCLEOTIDE COMPOSITION]
+Adenine (A)     : ${analysis.counts.A} bases
+Thymine (T)     : ${analysis.counts.T} bases
+Guanine (G)     : ${analysis.counts.G} bases
+Cytosine (C)    : ${analysis.counts.C} bases
+
+[SEQUENCE DATA]
+Raw Sequence (5' to 3'):
+${analyzedSequence}
+
+Complement Sequence (3' to 5'):
+${analysis.complement}
+
+Reverse Complement Sequence (5' to 3'):
+${analysis.reverseComplement}
+
+================================================================
+            VERIFIED SECURE DIAGNOSTIC VERDICT
+================================================================`;
+
+    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `biobridge_dna_report_${analysis.length}bp.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -226,14 +274,25 @@ export default function VirtualLab() {
               
               {/* 4. Results Dashboard */}
               <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-5 shadow-xs">
-                <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                <div className="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-teal-600 font-mono font-bold uppercase tracking-wider block">Diagnostics Completed</span>
                     <h2 className="text-base font-bold text-slate-900">Molecular Metrics Dashboard</h2>
                   </div>
-                  <span className="text-[10px] font-mono bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-500 font-bold">
-                    VERIFIED REPORT
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadReport}
+                      className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-900 border border-teal-200 hover:border-teal-300 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+                      id="btn-download-lab-report"
+                    >
+                      <Download className="w-3.5 h-3.5 text-teal-600" />
+                      Download Report
+                    </button>
+                    <span className="text-[10px] font-mono bg-slate-100 border border-slate-200 px-2 py-1.5 rounded text-slate-500 font-bold">
+                      VERIFIED REPORT
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" id="metric-cards-grid">

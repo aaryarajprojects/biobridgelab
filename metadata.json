@@ -1,0 +1,6 @@
+{
+  "name": "BioBridge Lab",
+  "description": "A free virtual bioinformatics learning and research platform that helps students learn biotechnology concepts and practice beginner bioinformatics skills.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

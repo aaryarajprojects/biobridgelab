@@ -41,6 +41,7 @@ export default function App() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [showInstallGuideModal, setShowInstallGuideModal] = useState(false);
 
   useEffect(() => {
     // Check if running as standalone PWA
@@ -356,10 +357,16 @@ export default function App() {
 
         {/* Chrome PWA Install Support Button & Global XP Widget */}
         <div className="flex items-center gap-2">
-          {deferredPrompt && (
+          {!isStandalone && (
             <button
-              onClick={handleInstallApp}
-              className="hidden md:flex items-center gap-1 px-2.5 py-1.5 bg-teal-50 border border-teal-200 hover:border-teal-300 text-teal-700 hover:text-teal-800 rounded-xl text-[10px] lg:text-xs font-extrabold cursor-pointer transition-all shadow-3xs hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => {
+                if (deferredPrompt) {
+                  handleInstallApp();
+                } else {
+                  setShowInstallGuideModal(true);
+                }
+              }}
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 border border-teal-200 hover:border-teal-300 text-teal-700 hover:text-teal-800 rounded-xl text-[10px] lg:text-xs font-extrabold cursor-pointer transition-all shadow-3xs hover:scale-[1.02] active:scale-[0.98]"
               id="pwa-header-install-btn"
             >
               <Download className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
@@ -432,10 +439,14 @@ export default function App() {
               })}
 
               {/* Mobile Install Option */}
-              {deferredPrompt && (
+              {!isStandalone && (
                 <button
                   onClick={() => {
-                    handleInstallApp();
+                    if (deferredPrompt) {
+                      handleInstallApp();
+                    } else {
+                      setShowInstallGuideModal(true);
+                    }
                     setMobileMenuOpen(false);
                   }}
                   className="w-full mt-2 p-3 rounded-lg text-left text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer bg-teal-600 text-white border border-teal-700 shadow-sm"
@@ -612,6 +623,97 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Install Guide Modal */}
+      {showInstallGuideModal && (
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 z-55 animate-fade-in text-slate-800" id="pwa-install-guide-modal">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-5 text-left">
+            <button 
+              onClick={() => setShowInstallGuideModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-full hover:bg-slate-50 transition-all"
+              title="Close"
+              id="pwa-close-guide-btn"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
+
+            <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">
+              <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center overflow-hidden shrink-0">
+                <img src="/biobridge_logo.jpg" alt="BioBridge Logo" className="w-8 h-8 object-contain" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Install BioBridge Lab</h3>
+                <p className="text-[10px] font-mono font-bold text-teal-600 uppercase tracking-wider">Scientific PWA Sandbox</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                Installing BioBridge Lab adds it to your desktop or home screen as a fast, standalone application with native sandboxed performance and robust offline workspace access.
+              </p>
+
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">How to Install in Google Chrome:</h4>
+                
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-teal-50 border border-teal-150 flex items-center justify-center text-[10px] font-black text-teal-700 font-mono shrink-0">1</span>
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                      Look at the top-right of your Chrome address bar. You will find an <strong>Install Icon</strong> (a small monitor screen with a down arrow, or a plus icon <span className="font-bold">⊕</span>).
+                    </p>
+                  </div>
+
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-teal-50 border border-teal-150 flex items-center justify-center text-[10px] font-black text-teal-700 font-mono shrink-0">2</span>
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                      Click the <strong>Install</strong> icon, or click the Chrome <strong>3-Dot Menu</strong> (⋮) in the top-right corner, select <strong>Save and Share</strong>, and choose <strong>Install BioBridge Lab...</strong>
+                    </p>
+                  </div>
+
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-teal-50 border border-teal-150 flex items-center justify-center text-[10px] font-black text-teal-700 font-mono shrink-0">3</span>
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                      Confirm the prompt by clicking <strong>Install</strong>. The app will immediately launch in its own dedicated, fullscreen, desktop-mode window.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-150 rounded-lg flex gap-2.5 items-start">
+                <Activity className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-750 block">Offline Diagnostics Loaded</span>
+                  <p className="text-[10px] text-slate-500 font-medium leading-normal">
+                    The active Service Worker is running on your network thread, so this application remains completely operational with offline diagnostics even when disconnected.
+                </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <button
+                onClick={() => setShowInstallGuideModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg cursor-pointer transition-all"
+                id="pwa-guide-gotit-btn"
+              >
+                Close
+              </button>
+              {deferredPrompt && (
+                <button
+                  onClick={() => {
+                    handleInstallApp();
+                    setShowInstallGuideModal(false);
+                  }}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-xs"
+                  id="pwa-guide-install-btn"
+                >
+                  Install Now
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

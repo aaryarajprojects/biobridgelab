@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
-    "build": "tsc && vite build && mkdir -p .build-outputs && cp -R dist/. .build-outputs/ && (cp assets/app-debug.apk .build-outputs/app-debug.apk || true) && mkdir -p app/build/outputs/apk/debug && (cp assets/app-debug.apk app/build/outputs/apk/debug/app-debug.apk || true) && mkdir -p build/outputs/apk/debug && (cp assets/app-debug.apk build/outputs/apk/debug/app-debug.apk || true)",
+    "build": "tsc && vite build && mkdir -p .build-outputs && cp -R dist/. .build-outputs/",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

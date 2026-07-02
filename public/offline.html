@@ -6,7 +6,7 @@
   <title>Offline - BioBridge Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;750&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -15,26 +15,71 @@
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
             display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
           }
         }
       }
     }
   </script>
+  <!-- Robust CSS fallback in case Tailwind CDN fails to load offline -->
+  <style>
+    :root {
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-500: #64748b;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --teal-50: #f0fdfa;
+      --teal-100: #ccfbf1;
+      --teal-600: #0d9488;
+      --teal-700: #0f766e;
+    }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--slate-50);
+      color: var(--slate-900);
+      margin: 0;
+      padding: 0;
+    }
+    .offline-card {
+      background-color: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 1rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+    .grid-bg-pattern {
+      background-size: 3rem 3rem;
+      background-image: 
+        linear-gradient(to right, #f1f5f9 1px, transparent 1px),
+        linear-gradient(to bottom, #f1f5f9 1px, transparent 1px);
+    }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4">
-  <div class="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 md:p-10 text-center space-y-6 shadow-sm relative overflow-hidden" id="offline-container">
-    <div class="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none"></div>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4 relative grid-bg-pattern selection:bg-teal-100 selection:text-teal-900">
+  
+  <div class="max-w-lg w-full bg-white border border-slate-200 rounded-2xl p-6 md:p-8 text-center space-y-6 shadow-sm relative overflow-hidden z-10" id="offline-container">
+    
+    <!-- Top Decorative Grid Overlay -->
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#f8fafc_1px,transparent_1px),linear-gradient(to_bottom,#f8fafc_1px,transparent_1px)] bg-[size:1.5rem_1.5rem] opacity-30 pointer-events-none"></div>
 
     <div class="relative z-10 space-y-5">
-      <!-- Logo Circle -->
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-50 border border-teal-150 text-teal-600 mb-2">
-        <!-- DNA logo/Icon -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-pulse">
+      
+      <!-- Network Banner Indicator -->
+      <div id="status-banner" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold tracking-wide uppercase shadow-xs mx-auto transition-all duration-300">
+        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
+        <span id="status-text">Offline Sandbox Mode</span>
+      </div>
+
+      <!-- Main Logo / SVG DNA Helix -->
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-teal-50 border border-teal-100 text-teal-600 shadow-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4.5 10.5C4.5 5.25 9.75 3 12 3s7.5 2.25 7.5 7.5S14.25 21 12 21s-7.5-5.25-7.5-10.5z" stroke-dasharray="2 2" opacity="0.3"/>
           <path d="M12 3v18" opacity="0.1" />
-          <path d="m8 8 8 8" />
-          <path d="m16 8-8 8" />
-          <path d="M20 12H4" opacity="0.2" />
+          <path d="m8 8 8 8" class="animate-pulse" />
+          <path d="m16 8-8 8" class="animate-pulse" style="animation-delay: 0.5s" />
           <circle cx="8" cy="8" r="1.5" fill="currentColor" />
           <circle cx="16" cy="16" r="1.5" fill="currentColor" />
           <circle cx="16" cy="8" r="1.5" fill="currentColor" />
@@ -42,41 +87,232 @@
         </svg>
       </div>
 
-      <div class="space-y-2">
+      <!-- App Title -->
+      <div class="space-y-1">
         <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 font-display">Connection Interrupted</h1>
-        <p class="text-xs text-slate-500 font-mono uppercase tracking-widest font-bold">BioBridge Lab • Offline Sandbox Mode</p>
+        <p class="text-xs text-slate-500 font-mono uppercase tracking-widest font-bold">BioBridge Lab Bioinformatics Portal</p>
       </div>
 
-      <p class="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
-        You are currently offline. While some simulated genome calculators, learning path modules, and dashboard records are accessible offline through local cache, this requested page requires an active internet connection.
+      <p class="text-sm text-slate-600 leading-relaxed max-w-md mx-auto">
+        Your device has lost its internet connection. While some simulated calculators, dashboards, and genomics templates remain fully functional via local storage and offline caches, this requested view requires server access.
       </p>
 
-      <div class="pt-2">
-        <div class="bg-slate-50 border border-slate-150 rounded-lg p-3 text-left">
-          <span class="text-[10px] font-bold text-slate-450 uppercase block mb-1">Diagnostics</span>
-          <ul class="text-[11px] text-slate-600 space-y-1 pl-4 list-disc font-medium">
-            <li>Check your local Wi-Fi or cellular network settings.</li>
-            <li>Verify other websites are loading correctly.</li>
-            <li>Return to the main page to use cached laboratory tools.</li>
-          </ul>
+      <!-- COLLAPSIBLE BIOINFORMATICS MINI-LAB GAME -->
+      <div class="bg-slate-50 border border-slate-150 rounded-xl p-4 text-left shadow-xs transition-all duration-200">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-teal-600">🧬</span>
+            <span class="text-xs font-bold text-slate-700 font-display">Offline Transcription Challenge</span>
+          </div>
+          <div class="text-[11px] font-mono text-slate-500">
+            Score: <span id="game-score" class="font-bold text-teal-600">0</span> | Streak: <span id="game-streak" class="font-bold text-teal-600">0</span>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-slate-500 mb-3 leading-relaxed">
+          Transcribe the DNA triplet below into its complementary **mRNA** strand. Remember the complementary base rules: <strong class="text-slate-700">A → U, T → A, C → G, G → C</strong>.
+        </p>
+
+        <div class="bg-slate-950 rounded-lg p-3 text-center mb-3 border border-slate-900 relative">
+          <div class="absolute top-1.5 left-2 text-[8px] font-mono font-bold text-slate-500 tracking-wider">DNA CODON</div>
+          <div class="text-lg font-mono font-extrabold tracking-widest text-teal-400" id="dna-codon">TAC</div>
+        </div>
+
+        <div class="space-y-2">
+          <!-- Answer Entry Grid -->
+          <div class="grid grid-cols-3 gap-2">
+            <div id="mrna-0" class="bg-white border border-slate-200 rounded-lg py-2 text-center font-mono font-extrabold text-slate-700 shadow-inner">-</div>
+            <div id="mrna-1" class="bg-white border border-slate-200 rounded-lg py-2 text-center font-mono font-extrabold text-slate-700 shadow-inner">-</div>
+            <div id="mrna-2" class="bg-white border border-slate-200 rounded-lg py-2 text-center font-mono font-extrabold text-slate-700 shadow-inner">-</div>
+          </div>
+
+          <!-- Base Input Buttons -->
+          <div class="grid grid-cols-4 gap-1.5 pt-1">
+            <button type="button" onclick="inputBase('A')" class="py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold font-mono rounded-md shadow-xs transition-colors cursor-pointer text-center text-slate-800">A</button>
+            <button type="button" onclick="inputBase('U')" class="py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold font-mono rounded-md shadow-xs transition-colors cursor-pointer text-center text-slate-800">U</button>
+            <button type="button" onclick="inputBase('C')" class="py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold font-mono rounded-md shadow-xs transition-colors cursor-pointer text-center text-slate-800">C</button>
+            <button type="button" onclick="inputBase('G')" class="py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold font-mono rounded-md shadow-xs transition-colors cursor-pointer text-center text-slate-800">G</button>
+          </div>
+
+          <!-- Game Controls -->
+          <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 mt-1">
+            <button type="button" onclick="clearAnswer()" class="text-[11px] font-bold text-slate-500 hover:text-slate-700 cursor-pointer">Clear</button>
+            <div id="game-feedback" class="text-[11px] font-bold text-teal-600 hidden">Perfect! +10 XP</div>
+            <button type="button" onclick="checkAnswer()" id="btn-check" class="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold rounded-md cursor-pointer transition-colors">Submit</button>
+          </div>
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row items-center gap-2 pt-4">
+      <!-- Diagnostics Checklist -->
+      <div class="bg-slate-50 border border-slate-150 rounded-xl p-4 text-left">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Diagnostics Checklist</span>
+        <ul class="text-[11px] text-slate-600 space-y-1.5 pl-4 list-disc font-medium">
+          <li>Check your local Wi-Fi or cellular network settings.</li>
+          <li>Verify other websites load correctly on your device.</li>
+          <li>If you have installed BioBridge Lab as a PWA, you can return to the main dashboard to access offline modules instantly.</li>
+        </ul>
+      </div>
+
+      <!-- Primary Action Buttons -->
+      <div class="flex flex-col sm:flex-row items-center gap-2 pt-2">
         <button 
           onclick="window.location.reload()" 
-          class="w-full sm:w-auto flex-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-xs"
+          class="w-full sm:w-auto flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-xs"
         >
           Check Connection
         </button>
         <a 
           href="/" 
-          class="w-full sm:w-auto px-4 py-2 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-xs font-bold rounded-lg cursor-pointer transition-all text-center"
+          class="w-full sm:w-auto px-4 py-2.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-xs font-bold rounded-lg cursor-pointer transition-all text-center"
         >
           Return to Lab
         </a>
       </div>
+
     </div>
   </div>
+
+  <!-- Real-time Network Status Listeners & Mini-Game Controller -->
+  <script>
+    // 1. Live Online/Offline Network Status Monitor
+    function updateOnlineStatus() {
+      const banner = document.getElementById('status-banner');
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+
+      if (navigator.onLine) {
+        banner.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold tracking-wide uppercase shadow-xs mx-auto transition-all duration-300';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+        text.innerText = 'Network Restored - Click Check Connection';
+        
+        // Auto reload after 2.5 seconds to restore user state seamlessly
+        setTimeout(() => {
+          window.location.reload();
+        }, 2500);
+      } else {
+        banner.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold tracking-wide uppercase shadow-xs mx-auto transition-all duration-300';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+        text.innerText = 'Offline Sandbox Mode';
+      }
+    }
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    // Initial check
+    updateOnlineStatus();
+
+    // 2. Transcription Challenge Mini-Game Logic
+    const DNA_BASES = ['A', 'T', 'C', 'G'];
+    const BASE_COMPLEMENTS = { 'A': 'U', 'T': 'A', 'C': 'G', 'G': 'C' };
+    
+    let currentDna = '';
+    let currentAnswer = ['', '', ''];
+    let inputIndex = 0;
+    
+    let score = parseInt(localStorage.getItem('bb_offline_score') || '0', 10);
+    let streak = parseInt(localStorage.getItem('bb_offline_streak') || '0', 10);
+
+    function updateScoreDisplay() {
+      document.getElementById('game-score').innerText = score;
+      document.getElementById('game-streak').innerText = streak;
+    }
+
+    function generateNewCodon() {
+      currentDna = '';
+      for (let i = 0; i < 3; i++) {
+        currentDna += DNA_BASES[Math.floor(Math.random() * DNA_BASES.length)];
+      }
+      document.getElementById('dna-codon').innerText = currentDna;
+      clearAnswer();
+    }
+
+    function clearAnswer() {
+      currentAnswer = ['', '', ''];
+      inputIndex = 0;
+      updateAnswerBoxes();
+      hideFeedback();
+    }
+
+    function updateAnswerBoxes() {
+      for (let i = 0; i < 3; i++) {
+        const box = document.getElementById(`mrna-${i}`);
+        box.innerText = currentAnswer[i] || '-';
+        if (currentAnswer[i]) {
+          box.className = 'bg-teal-50 border border-teal-200 text-teal-700 rounded-lg py-2 text-center font-mono font-extrabold shadow-sm transition-all duration-150 scale-105';
+        } else {
+          box.className = 'bg-white border border-slate-200 text-slate-700 rounded-lg py-2 text-center font-mono font-extrabold shadow-inner transition-all duration-150';
+        }
+      }
+    }
+
+    function inputBase(base) {
+      if (inputIndex < 3) {
+        currentAnswer[inputIndex] = base;
+        inputIndex++;
+        updateAnswerBoxes();
+        hideFeedback();
+      }
+    }
+
+    function hideFeedback() {
+      const fb = document.getElementById('game-feedback');
+      fb.classList.add('hidden');
+    }
+
+    function showFeedback(text, isSuccess) {
+      const fb = document.getElementById('game-feedback');
+      fb.innerText = text;
+      fb.className = `text-[11px] font-bold ${isSuccess ? 'text-emerald-600' : 'text-rose-600'} transition-all duration-150`;
+      fb.classList.remove('hidden');
+    }
+
+    function checkAnswer() {
+      if (currentAnswer.includes('')) {
+        showFeedback('Complete the triplet!', false);
+        return;
+      }
+
+      // Calculate correct complementary mRNA
+      let expectedStrand = '';
+      for (let i = 0; i < 3; i++) {
+        expectedStrand += BASE_COMPLEMENTS[currentDna[i]];
+      }
+
+      let enteredStrand = currentAnswer.join('');
+
+      if (enteredStrand === expectedStrand) {
+        score += 10;
+        streak += 1;
+        localStorage.setItem('bb_offline_score', score);
+        localStorage.setItem('bb_offline_streak', streak);
+        updateScoreDisplay();
+        showFeedback(`Perfect! ${enteredStrand} is correct.`, true);
+        
+        // Highlight correct state in green
+        for (let i = 0; i < 3; i++) {
+          document.getElementById(`mrna-${i}`).className = 'bg-emerald-50 border border-emerald-300 text-emerald-700 rounded-lg py-2 text-center font-mono font-extrabold shadow-sm';
+        }
+
+        setTimeout(() => {
+          generateNewCodon();
+        }, 1200);
+      } else {
+        streak = 0;
+        localStorage.setItem('bb_offline_streak', streak);
+        updateScoreDisplay();
+        showFeedback(`Incorrect. Expected: ${expectedStrand}`, false);
+        
+        // Highlight incorrect state in red
+        for (let i = 0; i < 3; i++) {
+          document.getElementById(`mrna-${i}`).className = 'bg-rose-50 border border-rose-200 text-rose-700 rounded-lg py-2 text-center font-mono font-extrabold shadow-sm';
+        }
+      }
+    }
+
+    // Initialize game
+    updateScoreDisplay();
+    generateNewCodon();
+  </script>
 </body>
 </html>

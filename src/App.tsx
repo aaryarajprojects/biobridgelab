@@ -9,8 +9,10 @@ import Dashboard from './components/Dashboard';
 import ResearchJourney from './components/ResearchJourney';
 import { 
   Dna, BookOpen, FlaskConical, Award, LayoutDashboard, Database, 
-  Activity, Menu, X, ArrowUpRight, Compass, Lock, Download, RefreshCw 
+  Activity, Menu, X, ArrowUpRight, Compass, Lock, Download, RefreshCw,
+  Share2
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const LOCAL_STORAGE_KEY = 'biobridge_lab_progress_v2';
 
@@ -35,6 +37,7 @@ export default function App() {
   const [view, setView] = useState<string>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [progress, setProgress] = useState<UserProgress>(INITIAL_PROGRESS);
+  const [isLogoLoading, setIsLogoLoading] = useState(true);
 
   // PWA Support State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -42,6 +45,15 @@ export default function App() {
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Simulate brand identity loading to showcase the skeleton loader
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLogoLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Check if running as standalone PWA
@@ -101,6 +113,19 @@ export default function App() {
     };
   }, []);
 
+  // Handle PWA shortcuts or deep links on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab') || params.get('view');
+    const validTabs = ['home', 'learning', 'sandbox', 'challenges', 'dashboard', 'journey'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setView(tabParam);
+      // Clean up query parameters without triggering page reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -117,6 +142,41 @@ export default function App() {
 
   const handleApplyUpdate = () => {
     window.location.reload();
+  };
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleShareApp = async () => {
+    const shareData = {
+      title: 'BioBridge Lab',
+      text: 'Explore bioinformatics, clinical genomics, and genetic mutations in BioBridge Lab!',
+      url: window.location.origin,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        showToast('Successfully shared BioBridge Lab!');
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          showToast('Sharing failed. Platform link copied to clipboard!');
+          try {
+            await navigator.clipboard.writeText(window.location.origin);
+          } catch (_) {}
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.origin);
+        showToast('Platform link copied to clipboard!');
+      } catch (err) {
+        console.error('Error copying to clipboard:', err);
+        showToast('Unable to copy. Link is: ' + window.location.origin);
+      }
+    }
   };
 
   // Load progress from localStorage on boot
@@ -303,25 +363,78 @@ export default function App() {
       {/* Header / Brand Navigation */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 py-3.5 flex items-center justify-between max-w-7xl mx-auto w-full" id="global-header">
         {/* Brand Logo */}
-        <div 
-          onClick={() => handleNavigate('home')} 
-          className="flex items-center gap-2.5 cursor-pointer select-none group"
+        <motion.div 
+          onClick={() => {
+            if (!isLogoLoading) {
+              handleNavigate('home');
+            }
+          }} 
+          whileHover={isLogoLoading ? {} : { 
+            scale: 1.06,
+            y: -1,
+            transition: { type: 'spring', stiffness: 400, damping: 12 }
+          }}
+          whileTap={isLogoLoading ? {} : { 
+            scale: 0.95,
+            transition: { type: 'spring', stiffness: 400, damping: 15 }
+          }}
+          className={`flex items-center gap-2.5 select-none group ${isLogoLoading ? 'cursor-wait' : 'cursor-pointer'}`}
           id="brand-logo-container"
         >
-          <div className="w-9 h-9 rounded-lg bg-teal-50 border border-teal-200/60 flex items-center justify-center text-teal-600 group-hover:border-teal-400 transition-all overflow-hidden p-0.5">
-            <img 
-              src="/biobridge_logo.jpg" 
-              alt="BioBridge Logo" 
-              className="w-8 h-8 object-contain" 
-              id="brand-logo-img"
-              referrerPolicy="no-referrer"
-            />
+          <div 
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all p-1.5 ${
+              isLogoLoading 
+                ? 'bg-slate-100/80 border border-slate-200/60' 
+                : 'bg-teal-50 border border-teal-200/60 text-teal-600 group-hover:border-teal-400'
+            }`} 
+            id="brand-logo-img-container"
+          >
+            {isLogoLoading ? (
+              <motion.div
+                animate={{
+                  opacity: [0.35, 1, 0.35],
+                  scale: [0.88, 1.05, 0.88],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="text-slate-350 flex items-center justify-center"
+                id="logo-icon-skeleton"
+              >
+                <Dna className="w-5.5 h-5.5" />
+              </motion.div>
+            ) : (
+              <Dna className="w-5.5 h-5.5" id="dna-icon" />
+            )}
           </div>
           <div className="text-left leading-none">
-            <span className="text-base font-extrabold tracking-tight text-slate-900 block">BioBridge<span className="text-teal-600">Lab</span></span>
-            <span className="text-[9px] font-mono font-bold tracking-wider text-slate-400 uppercase">Virtual Core Facility</span>
+            {isLogoLoading ? (
+              <div className="space-y-1.5 py-0.5" id="logo-text-skeleton-container">
+                <motion.div 
+                  animate={{ opacity: [0.35, 0.85, 0.35] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  className="h-4 w-18 bg-slate-200 rounded-md shimmer-sweep" 
+                />
+                <motion.div 
+                  animate={{ opacity: [0.35, 0.85, 0.35] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                  className="h-2.5 w-24 bg-slate-150 rounded-sm shimmer-sweep" 
+                />
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, x: -3 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <span className="text-base font-extrabold tracking-tight text-slate-900 block">BioBridge<span className="text-teal-600">Lab</span></span>
+                <span className="text-[9px] font-mono font-bold tracking-wider text-slate-400 uppercase">Virtual Core Facility</span>
+              </motion.div>
+            )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60" id="desktop-navbar">
@@ -357,6 +470,15 @@ export default function App() {
 
         {/* Chrome PWA Install Support Button & Global XP Widget */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleShareApp}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-800 rounded-xl text-[10px] lg:text-xs font-extrabold cursor-pointer transition-all shadow-3xs hover:scale-[1.02] active:scale-[0.98]"
+            id="pwa-header-share-btn"
+          >
+            <Share2 className="w-3.5 h-3.5 text-slate-500 animate-pulse" />
+            <span>Share</span>
+          </button>
+
           {!isStandalone && (
             <button
               onClick={() => {
@@ -383,10 +505,10 @@ export default function App() {
         {/* Mobile menu trigger */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900"
+          className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer"
           id="mobile-menu-trigger"
         >
-          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {mobileMenuOpen ? <X className="w-5.5 h-5.5" /> : <Menu className="w-5.5 h-5.5" />}
         </button>
       </header>
 
@@ -409,7 +531,7 @@ export default function App() {
               <span className="font-bold text-teal-700">{progress.xp} XP Earned</span>
             </div>
             
-            <nav className="flex flex-col gap-1.5" id="mobile-nav-links">
+            <nav className="flex flex-col gap-2" id="mobile-nav-links">
               {[
                 { id: 'home', label: 'Home', icon: Dna },
                 { id: 'learning', label: 'Learning Path', icon: BookOpen },
@@ -425,14 +547,14 @@ export default function App() {
                   <button
                     key={tab.id}
                     onClick={() => handleNavigate(tab.id)}
-                    className={`w-full p-3 rounded-lg text-left text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
+                    className={`w-full min-h-[44px] px-4 py-3 rounded-xl text-left text-sm font-bold flex items-center gap-3 transition-all cursor-pointer ${
                       isActive 
                         ? 'bg-teal-50 text-teal-900 border border-teal-100' 
                         : 'text-slate-700 hover:bg-slate-50'
                     }`}
                     id={`mobile-nav-${tab.id}`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-teal-900' : 'text-slate-400'}`} />
+                    <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-teal-900' : 'text-slate-400'}`} />
                     {tab.label}
                   </button>
                 );
@@ -449,13 +571,26 @@ export default function App() {
                     }
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full mt-2 p-3 rounded-lg text-left text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer bg-teal-600 text-white border border-teal-700 shadow-sm"
+                  className="w-full mt-2 min-h-[44px] px-4 py-3 rounded-xl text-left text-sm font-bold flex items-center gap-3 transition-all cursor-pointer bg-teal-600 text-white border border-teal-700 shadow-sm"
                   id="mobile-nav-install"
                 >
-                  <Download className="w-4 h-4 text-teal-100 animate-pulse" />
+                  <Download className="w-4.5 h-4.5 text-teal-100 animate-pulse" />
                   <span>Install BioBridge Lab</span>
                 </button>
               )}
+
+              {/* Mobile Share Option */}
+              <button
+                onClick={() => {
+                  handleShareApp();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full mt-2 min-h-[44px] px-4 py-3 rounded-xl text-left text-sm font-bold flex items-center gap-3 transition-all cursor-pointer bg-slate-100 text-slate-850 border border-slate-200 hover:bg-slate-200/80 shadow-3xs"
+                id="mobile-nav-share"
+              >
+                <Share2 className="w-4.5 h-4.5 text-slate-500 animate-pulse" />
+                <span>Share Platform</span>
+              </button>
             </nav>
           </div>
         </>
@@ -557,20 +692,15 @@ export default function App() {
           >
             <button 
               onClick={handleDismissInstallBanner}
-              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+              className="absolute top-1 right-1 text-slate-400 hover:text-slate-600 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-50 transition-all"
               id="pwa-dismiss-banner-btn"
               title="Dismiss"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4.5 h-4.5" />
             </button>
             
-            <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center shrink-0 overflow-hidden">
-              <img 
-                src="/biobridge_logo.jpg" 
-                alt="BioBridge Logo" 
-                className="w-9 h-9 object-contain"
-                referrerPolicy="no-referrer"
-              />
+            <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center shrink-0 p-1.5" id="pwa-banner-logo-container">
+              <Dna className="w-9 h-9 text-teal-600" />
             </div>
 
             <div className="space-y-2.5">
@@ -580,17 +710,17 @@ export default function App() {
                   Access your virtual bioinformatics learning lab anytime directly from your desktop or home screen with fast offline access.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <button
                   onClick={handleInstallApp}
-                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-extrabold rounded-lg cursor-pointer shadow-2xs transition-all"
+                  className="min-h-[44px] px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-2xs transition-all flex items-center justify-center"
                   id="pwa-banner-install-btn"
                 >
                   Install
                 </button>
                 <button
                   onClick={handleDismissInstallBanner}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-[11px] font-extrabold rounded-lg cursor-pointer transition-all"
+                  className="min-h-[44px] px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center"
                   id="pwa-banner-later-btn"
                 >
                   Later
@@ -615,7 +745,7 @@ export default function App() {
             </div>
             <button
               onClick={handleApplyUpdate}
-              className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-extrabold rounded-lg cursor-pointer shadow-3xs transition-all"
+              className="min-h-[44px] px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-extrabold rounded-xl cursor-pointer shadow-3xs transition-all flex items-center justify-center"
               id="pwa-update-apply-btn"
             >
               Update
@@ -630,7 +760,7 @@ export default function App() {
           <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-5 text-left">
             <button 
               onClick={() => setShowInstallGuideModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-full hover:bg-slate-50 transition-all"
+              className="absolute top-2 right-2 text-slate-400 hover:text-slate-600 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-slate-50 transition-all"
               title="Close"
               id="pwa-close-guide-btn"
             >
@@ -638,8 +768,8 @@ export default function App() {
             </button>
 
             <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">
-              <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center overflow-hidden shrink-0">
-                <img src="/biobridge_logo.jpg" alt="BioBridge Logo" className="w-8 h-8 object-contain" />
+              <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center shrink-0 p-1.5" id="pwa-guide-logo-container">
+                <Dna className="w-8 h-8 text-teal-600" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-900">Install BioBridge Lab</h3>
@@ -690,10 +820,10 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-4">
               <button
                 onClick={() => setShowInstallGuideModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg cursor-pointer transition-all"
+                className="min-h-[44px] px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center"
                 id="pwa-guide-gotit-btn"
               >
                 Close
@@ -704,7 +834,7 @@ export default function App() {
                     handleInstallApp();
                     setShowInstallGuideModal(false);
                   }}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-xs"
+                  className="min-h-[44px] px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-xs flex items-center justify-center"
                   id="pwa-guide-install-btn"
                 >
                   Install Now
@@ -714,6 +844,22 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-55 px-5 py-3.5 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-2xl flex items-center gap-3 text-xs font-bold font-sans"
+            id="global-toast-notification"
+          >
+            <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shrink-0" />
+            <span className="leading-none">{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

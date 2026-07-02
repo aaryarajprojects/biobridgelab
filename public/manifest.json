@@ -9,16 +9,44 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/biobridge_logo.jpg",
+      "src": "/biobridge_logo.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/biobridge_logo.jpg",
+      "src": "/biobridge_logo.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Virtual Lab",
+      "short_name": "Virtual Lab",
+      "description": "Jump straight into the bioinformatics virtual lab sandbox",
+      "url": "/?tab=sandbox",
+      "icons": [
+        {
+          "src": "/biobridge_logo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Challenges",
+      "short_name": "Challenges",
+      "description": "Launch the bioinformatics and genomics interactive challenges",
+      "url": "/?tab=challenges",
+      "icons": [
+        {
+          "src": "/biobridge_logo.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

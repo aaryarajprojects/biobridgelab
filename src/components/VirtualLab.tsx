@@ -3,7 +3,7 @@ import {
   FlaskConical, AlertCircle, RefreshCw, Activity, Copy, 
   CheckCircle2, HelpCircle, Download, BookOpen, Search, 
   GitCompare, Layers, Info, Sparkles, FileText, Check, ArrowRight,
-  ClipboardList, X, History, Database
+  ClipboardList, X, History, Database, Dna, Bookmark
 } from 'lucide-react';
 import { SavedReport, UserProgress } from '../types';
 
@@ -430,7 +430,7 @@ interface VirtualLabProps {
 
 export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) {
   // Tabs for the "Research Toolkit"
-  const [activeTab, setActiveTab] = useState<'analyzer' | 'comparator' | 'mutation' | 'translator'>('analyzer');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'comparator' | 'mutation' | 'translator' | 'ncbi'>('analyzer');
   
   // Dashboard & Past Runs States
   const [isDashboardExpanded, setIsDashboardExpanded] = useState<boolean>(false);
@@ -496,6 +496,202 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   const [transError, setTransError] = useState<string>('');
   const [transResult, setTransResult] = useState<any>(null);
 
+  // 5. Tool 5: NCBI Database Search & Fetch States
+  const [ncbiDb, setNcbiDb] = useState<'nucleotide' | 'pubmed' | 'protein'>('nucleotide');
+  const [ncbiSearchQuery, setNcbiSearchQuery] = useState<string>('insulin human');
+  const [ncbiSearchResults, setNcbiSearchResults] = useState<any[]>([]);
+  const [ncbiIsSearching, setNcbiIsSearching] = useState<boolean>(false);
+  const [ncbiIsFetching, setNcbiIsFetching] = useState<boolean>(false);
+  const [ncbiError, setNcbiError] = useState<string | null>(null);
+  const [ncbiFetchedSeq, setNcbiFetchedSeq] = useState<string | null>(null);
+  const [ncbiFetchedMeta, setNcbiFetchedMeta] = useState<any | null>(null);
+  const [ncbiSelectedArticle, setNcbiSelectedArticle] = useState<any | null>(null);
+  const [ncbiTrimSequence, setNcbiTrimSequence] = useState<boolean>(true);
+
+  // Clear states when toggling database types
+  useEffect(() => {
+    setNcbiSearchResults([]);
+    setNcbiFetchedSeq(null);
+    setNcbiFetchedMeta(null);
+    setNcbiSelectedArticle(null);
+    setNcbiError(null);
+    if (ncbiDb === 'nucleotide') {
+      setNcbiSearchQuery('insulin human');
+    } else if (ncbiDb === 'protein') {
+      setNcbiSearchQuery('insulin human');
+    } else {
+      setNcbiSearchQuery('CRISPR gene therapy human');
+    }
+  }, [ncbiDb]);
+
+  // NCBI search logic
+  const handleNcbiSearch = async () => {
+    if (!ncbiSearchQuery.trim()) {
+      setNcbiError(`Please enter a search query (e.g., "${ncbiDb === 'nucleotide' ? 'insulin human' : ncbiDb === 'protein' ? 'insulin human' : 'CRISPR genome editing'}").`);
+      return;
+    }
+    setNcbiIsSearching(true);
+    setNcbiError(null);
+    setNcbiSearchResults([]);
+    setNcbiFetchedSeq(null);
+    setNcbiFetchedMeta(null);
+    setNcbiSelectedArticle(null);
+
+    try {
+      const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=${ncbiDb}&term=${encodeURIComponent(ncbiSearchQuery.trim())}&retmax=8&retmode=json`;
+      const searchRes = await fetch(searchUrl);
+      if (!searchRes.ok) throw new Error(`Failed to query the NCBI ${ncbiDb === 'nucleotide' ? 'Nucleotide' : ncbiDb === 'protein' ? 'Protein' : 'PubMed'} search database.`);
+      
+      const searchJson = await searchRes.json();
+      const idList = searchJson.esearchresult?.idlist;
+      
+      if (!idList || idList.length === 0) {
+        setNcbiError(`No records matched your search query in the NCBI ${ncbiDb === 'nucleotide' ? 'Nucleotide' : ncbiDb === 'protein' ? 'Protein' : 'PubMed'} database.`);
+        setNcbiIsSearching(false);
+        return;
+      }
+
+      const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=${ncbiDb}&id=${idList.join(',')}&retmode=json`;
+      const summaryRes = await fetch(summaryUrl);
+      if (!summaryRes.ok) throw new Error('Failed to retrieve summary details from NCBI.');
+      
+      const summaryJson = await summaryRes.json();
+      const resultsMap = summaryJson.result;
+      
+      if (!resultsMap || !resultsMap.uids) {
+        setNcbiError('Could not process summary data from NCBI.');
+        setNcbiIsSearching(false);
+        return;
+      }
+
+      const formattedResults = resultsMap.uids.map((uid: string) => {
+        const item = resultsMap[uid];
+        if (ncbiDb === 'pubmed') {
+          // Map PubMed item properties
+          const authorNames = item.authors && Array.isArray(item.authors) 
+            ? item.authors.map((author: any) => author.name).join(', ') 
+            : 'Unknown Authors';
+          return {
+            uid,
+            dbType: 'pubmed',
+            title: item.title || 'Untitled Publication',
+            authors: authorNames,
+            journal: item.source || 'PubMed Article',
+            pubDate: item.pubdate || 'N/A',
+            volume: item.volume || '',
+            issue: item.issue || '',
+            pages: item.pages || '',
+            doi: item.articleids?.find((id: any) => id.idtype === 'doi')?.value || '',
+            pmid: uid,
+          };
+        } else {
+          // Map Nucleotide or Protein item properties
+          return {
+            uid,
+            dbType: ncbiDb, // 'nucleotide' or 'protein'
+            accession: item.caption || uid,
+            title: item.title || 'Untitled Sequence Record',
+            length: item.slen ? parseInt(item.slen) : 0,
+            organism: item.organism || 'Unknown Organism',
+            extra: item.extra || '',
+          };
+        }
+      });
+
+      setNcbiSearchResults(formattedResults);
+    } catch (err: any) {
+      console.error(err);
+      setNcbiError(err.message || 'An error occurred during the NCBI search. Please try again.');
+    } finally {
+      setNcbiIsSearching(false);
+    }
+  };
+
+  // NCBI fetch sequence logic
+  const handleNcbiFetchSequence = async (id: string, accession: string, title: string, length: number) => {
+    setNcbiIsFetching(true);
+    setNcbiError(null);
+    setNcbiFetchedSeq(null);
+    setNcbiFetchedMeta(null);
+
+    try {
+      const fetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=${ncbiDb}&id=${id}&rettype=fasta&retmode=text`;
+      const res = await fetch(fetchUrl);
+      if (!res.ok) throw new Error(`Failed to fetch sequence for accession ${accession}.`);
+      
+      const text = await res.text();
+      if (!text || text.trim() === '') {
+        throw new Error('NCBI returned an empty sequence.');
+      }
+
+      // Parse FASTA
+      const lines = text.split('\n');
+      const sequenceLines = lines.filter(line => !line.trim().startsWith('>'));
+      const rawSeq = sequenceLines.join('').toUpperCase();
+      // Sanitize sequence (convert U to T just in case, clean non-DNA characters)
+      const sanitized = ncbiDb === 'nucleotide'
+        ? rawSeq.replace(/U/g, 'T').replace(/[^ATGC]/g, '')
+        : rawSeq.replace(/[^A-Z]/g, ''); // For protein, allow all capital amino acids A-Z
+
+      if (!sanitized) {
+        throw new Error(ncbiDb === 'nucleotide'
+          ? 'The retrieved sequence did not contain any valid DNA nucleobases (A, T, G, C).'
+          : 'The retrieved sequence did not contain any valid amino acids (A-Z).'
+        );
+      }
+
+      setNcbiFetchedSeq(sanitized);
+      setNcbiFetchedMeta({
+        id,
+        accession,
+        title,
+        length,
+        originalFasta: text
+      });
+    } catch (err: any) {
+      console.error(err);
+      setNcbiError(err.message || `An error occurred while fetching the ${ncbiDb === 'nucleotide' ? 'nucleotide' : 'protein'} sequence.`);
+    } finally {
+      setNcbiIsFetching(false);
+    }
+  };
+
+  // Dispatch fetched sequence to analysis tools
+  const handleSendNcbiToTool = (tool: string, targetKey?: string) => {
+    if (!ncbiFetchedSeq) return;
+
+    let targetSeq = ncbiFetchedSeq;
+    if (ncbiTrimSequence && ncbiFetchedSeq.length > 150) {
+      targetSeq = ncbiFetchedSeq.substring(0, 150);
+    }
+
+    if (tool === 'analyzer') {
+      setAnalyzerSeq(targetSeq);
+      setAnalyzerResult(null);
+      setActiveTab('analyzer');
+    } else if (tool === 'comparator') {
+      if (targetKey === 'seqA') {
+        setCompSeqA(targetSeq);
+      } else {
+        setCompSeqB(targetSeq);
+      }
+      setCompResult(null);
+      setActiveTab('comparator');
+    } else if (tool === 'mutation') {
+      if (targetKey === 'original') {
+        setMutOriginal(targetSeq);
+      } else {
+        setMutModified(targetSeq);
+      }
+      setMutResult(null);
+      setActiveTab('mutation');
+    } else if (tool === 'translator') {
+      setTransSeq(targetSeq);
+      setTransResult(null);
+      setActiveTab('translator');
+    }
+  };
+
   // Report Generator Interactive Modal State
   const [activeReport, setActiveReport] = useState<SavedReport | null>(null);
 
@@ -505,6 +701,7 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
     setCompError('');
     setMutError('');
     setTransError('');
+    setNcbiError(null);
   }, [activeTab]);
 
   // Copy helper
@@ -1095,7 +1292,33 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       resultSummary = `Codons Analyzed: ${transResult.codonCount} triplets | Synthesized Protein: ${transResult.proteinPeptide}`;
       observation = `Transcribed mRNA sequence: [${transResult.rnaSeq}]. Assembled ${transResult.codonCount} amino acid residues, including starting initiator codes.`;
       conclusion = `The molecular translation successfully assembled the peptide chain [${transResult.proteinPeptide}]. This highlights the biological mechanism of the central dogma, demonstrating translation from single-letter nucleotide codes to complex protein products.`;
-    } else {
+    }
+    else if (activeTab === 'ncbi') {
+      if (ncbiDb === 'nucleotide') {
+        if (!ncbiFetchedSeq || !ncbiFetchedMeta) {
+          setNcbiError('Please fetch a nucleotide sequence before generating a report.');
+          return;
+        }
+        experimentName = 'NCBI Nucleotide Reference Sequence Annotation';
+        inputSequence = ncbiFetchedSeq.substring(0, 100) + (ncbiFetchedSeq.length > 100 ? '...' : '');
+        method = 'Querying live NCBI Entrez Nucleotide databases, streaming public FASTA formats, and sanitizing raw genomic code.';
+        resultSummary = `Accession: ${ncbiFetchedMeta.accession} | Title: ${ncbiFetchedMeta.title} | Length: ${ncbiFetchedSeq.length} bp`;
+        observation = `Successfully retrieved public reference accession ${ncbiFetchedMeta.accession} from NCBI. Verified sequence length: ${ncbiFetchedMeta.length} bp. Filtered and sanitized sequence content contains ${ncbiFetchedSeq.length} clean ATGC nucleobases.`;
+        conclusion = `The biological reference for ${ncbiFetchedMeta.title} was loaded into the workstation. Retrieving verified reference templates directly from NCBI ensures research integrity during subsequent comparative mutations and translation models.`;
+      } else {
+        if (!ncbiSelectedArticle) {
+          setNcbiError('Please select a literature article before generating a report.');
+          return;
+        }
+        experimentName = 'NCBI PubMed Literature Citation & Synthesis';
+        inputSequence = `PMID: ${ncbiSelectedArticle.pmid} | Title: ${ncbiSelectedArticle.title}`;
+        method = 'Retrieving metadata records from the NCBI Entrez PubMed database to contextualize genomic sequences with current publications.';
+        resultSummary = `PMID: ${ncbiSelectedArticle.pmid} | Source: ${ncbiSelectedArticle.journal} (${ncbiSelectedArticle.pubDate})`;
+        observation = `Extracted scientific publication "${ncbiSelectedArticle.title}" by authors: ${ncbiSelectedArticle.authors}. Verified PMID reference index: ${ncbiSelectedArticle.pmid}. Digital Object Identifier (DOI): ${ncbiSelectedArticle.doi || 'Not Available'}.`;
+        conclusion = `Reviewing peer-reviewed biological literature provides critical peer context for bioinformatics. This literature reference supports genomic investigations regarding molecular gene function and associated phenotypes.`;
+      }
+    }
+    else {
       return; // No results computed yet
     }
 
@@ -1497,7 +1720,8 @@ ${activeReport.conclusion}
             { id: 'analyzer', label: 'DNA Analyzer', icon: Search, desc: 'Calculates base counts, frequencies, and GC/AT content.' },
             { id: 'comparator', label: 'Sequence Comparator', icon: GitCompare, desc: 'Aligns and compares two sequences side-by-side.' },
             { id: 'mutation', label: 'Mutation Explorer', icon: Layers, desc: 'Analyzes substitutions, deletions, and reading frames.' },
-            { id: 'translator', label: 'Translation Explorer', icon: Activity, desc: 'Converts DNA to RNA and amino acid peptide chains.' }
+            { id: 'translator', label: 'Translation Explorer', icon: Activity, desc: 'Converts DNA to RNA and amino acid peptide chains.' },
+            { id: 'ncbi', label: 'NCBI Database Search', icon: Database, desc: 'Query NCBI Nucleotide database, fetch live FASTA sequences, and analyze them.' }
           ].map(tab => {
             const Icon = tab.icon;
             const isSelected = activeTab === tab.id;
@@ -2252,6 +2476,563 @@ ${activeReport.conclusion}
                       <h4 className="text-sm font-bold text-slate-800">No Peptide Translated</h4>
                       <p className="text-xs text-slate-400 max-w-xs font-medium">Input baseline templates on the left and click Translate to explore central dogma ribosomal transcription and peptide assemblies.</p>
                     </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TOOL 5: NCBI DATABASE SEARCH & FETCH */}
+          {activeTab === 'ncbi' && (
+            <div className="space-y-6 animate-fade-in" id="tool-ncbi-panel">
+              {/* Pre-use Explanation */}
+              <div className="p-4 bg-teal-50/40 border border-teal-150 rounded-xl space-y-2 text-xs">
+                <span className="text-[10px] bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max">
+                  Live NCBI Database Integration
+                </span>
+                <h4 className="font-extrabold text-teal-950">NCBI Entrez Query Engine</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  Query the official National Center for Biotechnology Information (NCBI) database in real time. Search for genomic nucleotide sequence records or peer-reviewed scientific literature (PubMed) to context-ground your gene annotations, molecular hypotheses, and classroom lab reports.
+                </p>
+              </div>
+
+              {/* Database Mode Switcher Toggle */}
+              <div className="flex flex-wrap gap-1 bg-slate-100/80 p-1 rounded-xl w-max border border-slate-200 shadow-3xs" id="ncbi-db-selector">
+                <button
+                  type="button"
+                  onClick={() => setNcbiDb('nucleotide')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    ncbiDb === 'nucleotide'
+                      ? 'bg-white border border-slate-200 text-teal-800 shadow-3xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Dna className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Sequences (DNA)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNcbiDb('protein')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    ncbiDb === 'protein'
+                      ? 'bg-white border border-slate-200 text-teal-800 shadow-3xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Proteins</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNcbiDb('pubmed')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    ncbiDb === 'pubmed'
+                      ? 'bg-white border border-slate-200 text-teal-800 shadow-3xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Literature</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Search Panel */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5 shadow-3xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">
+                      {ncbiDb === 'nucleotide' ? 'Search Nucleotide Database:' : ncbiDb === 'protein' ? 'Search Protein Database:' : 'Search PubMed Bibliography:'}
+                    </span>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={ncbiSearchQuery}
+                          onChange={(e) => setNcbiSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleNcbiSearch();
+                          }}
+                          placeholder={ncbiDb === 'nucleotide' ? 'e.g., "human insulin" or "HBB"' : ncbiDb === 'protein' ? 'e.g., "insulin human" or "myoglobin"' : 'e.g., "CRISPR gene therapy human"'}
+                          className="w-full bg-white text-slate-800 border border-slate-200 hover:border-teal-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-bold pl-8 pr-2 py-2 focus:outline-none transition-all shadow-3xs"
+                        />
+                        <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+                      </div>
+                      <button
+                        onClick={handleNcbiSearch}
+                        disabled={ncbiIsSearching}
+                        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs cursor-pointer transition-all shrink-0"
+                      >
+                        {ncbiIsSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                        {ncbiIsSearching ? 'Searching...' : 'Search'}
+                      </button>
+                    </div>
+
+                    {/* Quick presets list */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Quick suggestions:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ncbiDb === 'nucleotide' ? (
+                          [
+                            { term: 'HBB human', label: 'Human HBB' },
+                            { term: 'insulin human', label: 'Human Insulin' },
+                            { term: 'SARS-CoV-2 spike', label: 'SARS-CoV-2 Spike' },
+                            { term: 'TP53 human', label: 'Human TP53' },
+                            { term: 'myoglobin human', label: 'Human Myoglobin' }
+                          ].map((item) => (
+                            <button
+                              key={item.term}
+                              type="button"
+                              onClick={() => setNcbiSearchQuery(item.term)}
+                              className="text-[10px] bg-white border border-slate-200 hover:border-teal-400 text-slate-600 hover:text-teal-700 font-bold px-2 py-1 rounded-md transition-all cursor-pointer shadow-3xs"
+                            >
+                              {item.label}
+                            </button>
+                          ))
+                        ) : ncbiDb === 'protein' ? (
+                          [
+                            { term: 'insulin human', label: 'Human Insulin' },
+                            { term: 'hemoglobin human', label: 'Human Hemoglobin' },
+                            { term: 'myoglobin human', label: 'Human Myoglobin' },
+                            { term: 'albumin human', label: 'Human Albumin' },
+                            { term: 'collagen human', label: 'Human Collagen' }
+                          ].map((item) => (
+                            <button
+                              key={item.term}
+                              type="button"
+                              onClick={() => setNcbiSearchQuery(item.term)}
+                              className="text-[10px] bg-white border border-slate-200 hover:border-teal-400 text-slate-600 hover:text-teal-700 font-bold px-2 py-1 rounded-md transition-all cursor-pointer shadow-3xs"
+                            >
+                              {item.label}
+                            </button>
+                          ))
+                        ) : (
+                          [
+                            { term: 'CRISPR gene therapy human', label: 'CRISPR Therapy' },
+                            { term: 'sickle cell mutation HBB', label: 'Sickle Cell' },
+                            { term: 'insulin recombinant DNA history', label: 'Recombinant Insulin' },
+                            { term: 'SARS-CoV-2 vaccine genome', label: 'mRNA Vaccines' },
+                            { term: 'TP53 oncogene tumor suppressor', label: 'TP53 Suppressor' }
+                          ].map((item) => (
+                            <button
+                              key={item.term}
+                              type="button"
+                              onClick={() => setNcbiSearchQuery(item.term)}
+                              className="text-[10px] bg-white border border-slate-200 hover:border-teal-400 text-slate-600 hover:text-teal-700 font-bold px-2 py-1 rounded-md transition-all cursor-pointer shadow-3xs"
+                            >
+                              {item.label}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {ncbiError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>{ncbiError}</div>
+                    </div>
+                  )}
+
+                  {/* Search Results List */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide block flex justify-between">
+                      <span>Query Results:</span>
+                      {ncbiSearchResults.length > 0 && <span className="font-mono text-[10px] text-slate-400">{ncbiSearchResults.length} found</span>}
+                    </span>
+
+                    <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                      {ncbiIsSearching ? (
+                        <div className="py-12 flex flex-col items-center justify-center space-y-2 bg-slate-50 border border-slate-200 rounded-xl">
+                          <RefreshCw className="w-8 h-8 text-teal-500 animate-spin" />
+                          <p className="text-xs text-slate-400 font-mono font-bold animate-pulse uppercase tracking-wider">Querying NCBI database...</p>
+                        </div>
+                      ) : ncbiSearchResults.length > 0 ? (
+                        ncbiSearchResults.map((record) => {
+                          if (record.dbType === 'pubmed') {
+                            const isSelected = ncbiSelectedArticle?.pmid === record.pmid;
+                            return (
+                              <div
+                                key={record.uid}
+                                onClick={() => setNcbiSelectedArticle(record)}
+                                className={`p-3 bg-white border rounded-xl space-y-1.5 text-left transition-all shadow-3xs hover:shadow-2xs cursor-pointer ${
+                                  isSelected ? 'border-teal-500 ring-1 ring-teal-500/20 bg-teal-50/5' : 'border-slate-200 hover:border-teal-300'
+                                }`}
+                              >
+                                <div className="flex justify-between items-start gap-1">
+                                  <span className="text-[9px] bg-teal-50 text-teal-700 border border-teal-150 font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                    PMID: {record.pmid}
+                                  </span>
+                                  <span className="text-[10px] font-mono font-bold text-slate-400 shrink-0">
+                                    {record.pubDate}
+                                  </span>
+                                </div>
+                                <h5 className="text-xs font-extrabold text-slate-800 line-clamp-2 leading-relaxed">
+                                  {record.title}
+                                </h5>
+                                <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium pt-1">
+                                  <span className="truncate max-w-[65%] font-mono font-bold text-slate-400">
+                                    {record.authors}
+                                  </span>
+                                  <span className="font-bold text-teal-600 flex items-center gap-0.5 shrink-0 text-[10px]">
+                                    Review Details <ArrowRight className="w-3 h-3" />
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            const isSelected = ncbiFetchedMeta?.id === record.uid;
+                            return (
+                              <div
+                                key={record.uid}
+                                className={`p-3 bg-white border rounded-xl space-y-2 transition-all shadow-3xs hover:shadow-2xs ${
+                                  isSelected ? 'border-teal-500 ring-1 ring-teal-500/20' : 'border-slate-200'
+                                }`}
+                              >
+                                <div className="flex justify-between items-start gap-1">
+                                  <div className="space-y-0.5 max-w-[70%]">
+                                    <span className="text-[10px] bg-slate-100 text-slate-600 font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border border-slate-200 inline-block">
+                                      {record.accession}
+                                    </span>
+                                    <span className="text-[9px] text-emerald-700 font-mono font-bold ml-1.5 uppercase inline-block">
+                                      {record.organism}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-mono font-bold text-slate-500 shrink-0">
+                                    {record.length} {record.dbType === 'protein' ? 'aa' : 'bp'}
+                                  </span>
+                                </div>
+                                <h5 className="text-xs font-extrabold text-slate-800 line-clamp-2 leading-relaxed">
+                                  {record.title}
+                                </h5>
+                                <button
+                                  type="button"
+                                  onClick={() => handleNcbiFetchSequence(record.uid, record.accession, record.title, record.length)}
+                                  disabled={ncbiIsFetching}
+                                  className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                                    isSelected 
+                                      ? 'bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100' 
+                                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                                  }`}
+                                >
+                                  {ncbiIsFetching && isSelected ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Download className="w-3.5 h-3.5" />
+                                  )}
+                                  {isSelected ? 'Refetch FASTA' : 'Fetch Sequence'}
+                                </button>
+                              </div>
+                            );
+                          }
+                        })
+                      ) : (
+                        <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-6 text-center space-y-1 text-xs text-slate-400 font-medium">
+                          <Database className="w-8 h-8 text-slate-300 mx-auto" />
+                          <p>
+                            {ncbiDb === 'nucleotide' 
+                              ? "Enter search keywords and click 'Search' to fetch biological entries from NCBI Nucleotide." 
+                              : ncbiDb === 'protein'
+                              ? "Enter search keywords and click 'Search' to fetch protein entries from NCBI Protein."
+                              : "Enter bibliography topics and click 'Search' to query papers and review citations."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Output Panel / Viewer Column */}
+                <div className="lg:col-span-7">
+                  {ncbiDb === 'pubmed' ? (
+                    ncbiSelectedArticle ? (
+                      <div className="space-y-5 animate-fade-in text-xs text-slate-700">
+                        {/* Article Header Card */}
+                        <div className="p-4 bg-teal-50/20 border border-teal-150 rounded-xl space-y-2.5">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-mono font-bold text-teal-800 uppercase tracking-wide">NCBI PubMed Reference:</span>
+                            <span className="text-[10px] bg-teal-100 text-teal-800 font-mono font-bold px-2 py-0.5 rounded border border-teal-200">
+                              PMID {ncbiSelectedArticle.pmid}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-extrabold text-slate-900 leading-relaxed">
+                            {ncbiSelectedArticle.title}
+                          </h4>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Authors & Affiliations:</span>
+                            <p className="font-bold text-slate-600">{ncbiSelectedArticle.authors}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-[10px] text-slate-500 font-mono pt-1.5 border-t border-slate-100">
+                            <div>Journal: <strong className="text-slate-700">{ncbiSelectedArticle.journal}</strong></div>
+                            <div>Published: <strong className="text-slate-700">{ncbiSelectedArticle.pubDate}</strong></div>
+                            {ncbiSelectedArticle.doi && (
+                              <div className="col-span-2 truncate">DOI: <strong className="text-slate-700">{ncbiSelectedArticle.doi}</strong></div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Citation Generator Panel */}
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 shadow-3xs">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-slate-700 block uppercase tracking-wider font-mono">Academic Citation Formats</span>
+                            <span className="text-[10px] text-slate-400 font-medium">Ready for Lab Bibliographies</span>
+                          </div>
+                          
+                          <div className="space-y-2.5">
+                            {/* APA */}
+                            <div className="space-y-1 bg-white p-2.5 border border-slate-150 rounded-lg">
+                              <div className="flex justify-between items-center text-[9px] font-mono font-bold text-slate-400">
+                                <span>APA FORMAT</span>
+                                <button
+                                  onClick={() => handleCopy(
+                                    `${ncbiSelectedArticle.authors}. (${ncbiSelectedArticle.pubDate.split(' ')[0] || 'N/A'}). ${ncbiSelectedArticle.title}. ${ncbiSelectedArticle.journal}${ncbiSelectedArticle.volume ? `, ${ncbiSelectedArticle.volume}` : ''}${ncbiSelectedArticle.pages ? `, ${ncbiSelectedArticle.pages}` : ''}. PMID: ${ncbiSelectedArticle.pmid}.`,
+                                    'apa-cite'
+                                  )}
+                                  className="text-teal-600 hover:text-teal-700 font-bold uppercase tracking-wider cursor-pointer"
+                                >
+                                  {copiedText === 'apa-cite' ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                              <p className="font-mono text-[10.5px] text-slate-600 leading-normal font-medium">
+                                {ncbiSelectedArticle.authors}. ({ncbiSelectedArticle.pubDate.split(' ')[0] || 'N/A'}). {ncbiSelectedArticle.title}. <i>{ncbiSelectedArticle.journal}</i>{ncbiSelectedArticle.volume ? `, ${ncbiSelectedArticle.volume}` : ''}{ncbiSelectedArticle.pages ? `, ${ncbiSelectedArticle.pages}` : ''}. PMID: {ncbiSelectedArticle.pmid}.
+                              </p>
+                            </div>
+
+                            {/* AMA */}
+                            <div className="space-y-1 bg-white p-2.5 border border-slate-150 rounded-lg">
+                              <div className="flex justify-between items-center text-[9px] font-mono font-bold text-slate-400">
+                                <span>AMA FORMAT</span>
+                                <button
+                                  onClick={() => handleCopy(
+                                    `${ncbiSelectedArticle.authors}. ${ncbiSelectedArticle.title}. ${ncbiSelectedArticle.journal}. ${ncbiSelectedArticle.pubDate};${ncbiSelectedArticle.volume || ''}:${ncbiSelectedArticle.pages || ''}. PMID: ${ncbiSelectedArticle.pmid}.`,
+                                    'ama-cite'
+                                  )}
+                                  className="text-teal-600 hover:text-teal-700 font-bold uppercase tracking-wider cursor-pointer"
+                                >
+                                  {copiedText === 'ama-cite' ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                              <p className="font-mono text-[10.5px] text-slate-600 leading-normal font-medium">
+                                {ncbiSelectedArticle.authors}. {ncbiSelectedArticle.title}. <i>{ncbiSelectedArticle.journal}</i>. {ncbiSelectedArticle.pubDate};{ncbiSelectedArticle.volume || ''}:{ncbiSelectedArticle.pages || ''}. PMID: {ncbiSelectedArticle.pmid}.
+                              </p>
+                            </div>
+
+                            {/* MLA */}
+                            <div className="space-y-1 bg-white p-2.5 border border-slate-150 rounded-lg">
+                              <div className="flex justify-between items-center text-[9px] font-mono font-bold text-slate-400">
+                                <span>MLA FORMAT (9th ed.)</span>
+                                <button
+                                  onClick={() => handleCopy(
+                                    `${ncbiSelectedArticle.authors}. "${ncbiSelectedArticle.title}." ${ncbiSelectedArticle.journal}, vol. ${ncbiSelectedArticle.volume || 'N/A'}, ${ncbiSelectedArticle.pubDate.split(' ')[0] || 'N/A'}, pp. ${ncbiSelectedArticle.pages || 'N/A'}. PMID: ${ncbiSelectedArticle.pmid}.`,
+                                    'mla-cite'
+                                  )}
+                                  className="text-teal-600 hover:text-teal-700 font-bold uppercase tracking-wider cursor-pointer"
+                                >
+                                  {copiedText === 'mla-cite' ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                              <p className="font-mono text-[10.5px] text-slate-600 leading-normal font-medium">
+                                {ncbiSelectedArticle.authors}. "{ncbiSelectedArticle.title}." <i>{ncbiSelectedArticle.journal}</i>, vol. {ncbiSelectedArticle.volume || 'N/A'}, {ncbiSelectedArticle.pubDate.split(' ')[0] || 'N/A'}, pp. {ncbiSelectedArticle.pages || 'N/A'}. PMID: {ncbiSelectedArticle.pmid}.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive Literature Synopsis / Educational Digest */}
+                        <div className="p-4 bg-teal-50/10 border border-slate-200 rounded-xl space-y-3">
+                          <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider font-mono block">Bioinformatics Literature Synopsis</span>
+                          
+                          <div className="space-y-2 leading-relaxed">
+                            <h5 className="font-extrabold text-slate-800">1. Molecular Significance</h5>
+                            <p className="text-slate-600 text-[11px] font-medium">
+                              This publication investigates genomic profiles related to {ncbiSelectedArticle.title.toLowerCase().includes('insulin') ? 'metabolic signaling, islet secretion, and genetic peptide expression' : ncbiSelectedArticle.title.toLowerCase().includes('crispr') ? 'gene correction, single-guide RNA specificity, and molecular endonuclease editing vectors' : 'specific eukaryotic gene structures, disease mutations, and therapeutic targeting pathways'}.
+                            </p>
+                            
+                            <h5 className="font-extrabold text-slate-800">2. virtual Classroom Application</h5>
+                            <p className="text-slate-600 text-[11px] font-medium">
+                              Students can use the citation and associated metadata from this study to defend claims in their lab report cards. Aligning wet-lab hypotheses with peer-reviewed data helps bridge structural bioinformatics (sequence composition, alignment homology) with phenotypic medical outcomes.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Direct Export to Report */}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={handleGenerateReport}
+                            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs cursor-pointer transition-all"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Generate Literature Report Card
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-12 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[350px]">
+                        <BookOpen className="w-10 h-10 text-slate-300 animate-pulse" />
+                        <h4 className="text-sm font-bold text-slate-800">No PubMed Article Selected</h4>
+                        <p className="text-xs text-slate-400 max-w-xs font-medium">Search for peer-reviewed bibliography items on the left, then click on a result card to review citations and academic digest briefs.</p>
+                      </div>
+                    )
+                  ) : (
+                    /* NUCLEOTIDE OR PROTEIN VIEW */
+                    ncbiIsFetching ? (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-12 flex flex-col items-center justify-center space-y-3 h-full min-h-[300px]">
+                        <RefreshCw className="w-10 h-10 text-teal-500 animate-spin" />
+                        <h4 className="text-sm font-bold text-slate-800 animate-pulse">Downloading {ncbiDb === 'protein' ? 'Protein' : 'Genomic'} Sequence...</h4>
+                        <p className="text-xs text-slate-400 font-medium max-w-xs text-center">Fetching biological reference and parsing FASTA data streams directly from NCBI.</p>
+                      </div>
+                    ) : ncbiFetchedSeq && ncbiFetchedMeta ? (
+                      <div className="space-y-5 animate-fade-in">
+                        {/* Fetched Record Metadata */}
+                        <div className="p-4 bg-teal-50/20 border border-teal-150 rounded-xl space-y-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-mono font-bold text-teal-800 uppercase tracking-wide text-[9px]">Fetched Record Details:</span>
+                            <span className="text-[10px] bg-teal-100 text-teal-800 font-mono font-bold px-2 py-0.5 rounded border border-teal-200">
+                              {ncbiFetchedMeta.accession}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-extrabold text-slate-900 leading-relaxed">
+                            {ncbiFetchedMeta.title}
+                          </h4>
+                          <div className="flex gap-4 text-[10px] text-slate-500 font-mono">
+                            <span>Original Size: <strong>{ncbiFetchedMeta.length} {ncbiDb === 'protein' ? 'aa' : 'bp'}</strong></span>
+                            <span>Clean {ncbiDb === 'protein' ? 'Amino Acids' : 'DNA Bases'}: <strong>{ncbiFetchedSeq.length} {ncbiDb === 'protein' ? 'aa' : 'bp'}</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Performance / Trim options */}
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                          <label className="flex items-start gap-2.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={ncbiTrimSequence}
+                              onChange={(e) => setNcbiTrimSequence(e.target.checked)}
+                              className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            <div className="space-y-0.5 text-xs text-slate-700">
+                              <span className="font-bold block">Limit fetched sequence length to first 150 {ncbiDb === 'protein' ? 'aa' : 'bp'}</span>
+                              <span className="text-[11px] text-slate-400 font-medium block leading-relaxed">
+                                Recommended. Truncating sequence data to 150 {ncbiDb === 'protein' ? 'aa' : 'bp'} prevents browser rendering bottlenecks inside complex visual analysis grids, while leaving calculations robust.
+                              </span>
+                            </div>
+                          </label>
+                        </div>
+
+                        {/* Raw Nucleobases Box */}
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
+                            Sanitized {ncbiDb === 'protein' ? 'Protein' : 'DNA Nucleotide'} Sequence ({ncbiTrimSequence && ncbiFetchedSeq.length > 150 ? `Showing first 150 ${ncbiDb === 'protein' ? 'aa' : 'bp'}` : 'Full Sequence'}):
+                          </span>
+                          <div className="p-4 bg-slate-950 text-slate-200 rounded-xl border border-slate-900 font-mono text-xs overflow-hidden shadow-inner space-y-2">
+                            <div className="max-h-28 overflow-y-auto break-all scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent leading-relaxed text-teal-400 font-bold">
+                              {ncbiTrimSequence && ncbiFetchedSeq.length > 150 
+                                ? ncbiFetchedSeq.substring(0, 150) 
+                                : ncbiFetchedSeq
+                              }
+                            </div>
+                            <div className="pt-2 border-t border-slate-900 flex justify-between items-center text-[10px] text-slate-400">
+                              <span>Showing {ncbiTrimSequence && ncbiFetchedSeq.length > 150 ? '150' : ncbiFetchedSeq.length} of {ncbiFetchedSeq.length} {ncbiDb === 'protein' ? 'aa' : 'bp'}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(ncbiTrimSequence && ncbiFetchedSeq.length > 150 ? ncbiFetchedSeq.substring(0, 150) : ncbiFetchedSeq, 'ncbi-seq')}
+                                className="text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1 cursor-pointer"
+                              >
+                                {copiedText === 'ncbi-seq' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                Copy {ncbiDb === 'protein' ? 'Protein' : 'DNA'} Sequence
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Dispatcher Actions */}
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 shadow-3xs">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider text-[10px] font-mono">Workspace Dispatch Hub</span>
+                            <span className="text-[11px] text-slate-400 font-medium block leading-normal">
+                              {ncbiDb === 'protein'
+                                ? "Note: This is an amino acid protein sequence. Virtual Lab analysis tools are DNA-specific. Copy the protein FASTA directly or search for its corresponding nucleotide gene record to use analysis tools."
+                                : "Instantly route this fetched nucleotide template directly into any of the Virtual Lab's clinical tools:"
+                              }
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSendNcbiToTool('analyzer')}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-505 hover:bg-teal-50/20 text-slate-700 hover:text-teal-800 rounded-lg text-left text-xs font-bold transition-all cursor-pointer shadow-3xs flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                              <span>Dispatch to <strong>DNA Analyzer</strong></span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSendNcbiToTool('translator')}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-505 hover:bg-teal-50/20 text-slate-700 hover:text-teal-800 rounded-lg text-left text-xs font-bold transition-all cursor-pointer shadow-3xs flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                              <span>Dispatch to <strong>Translation Explorer</strong></span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSendNcbiToTool('comparator', 'seqA')}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-505 hover:bg-teal-50/20 text-slate-700 hover:text-teal-800 rounded-lg text-left text-xs font-bold transition-all cursor-pointer shadow-3xs flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
+                              <span>Set as <strong>Comparator: Strand A</strong></span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSendNcbiToTool('comparator', 'seqB')}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-505 hover:bg-teal-50/20 text-slate-700 hover:text-teal-800 rounded-lg text-left text-xs font-bold transition-all cursor-pointer shadow-3xs flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                              <span>Set as <strong>Comparator: Strand B</strong></span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSendNcbiToTool('mutation', 'original')}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-505 hover:bg-teal-50/20 text-slate-700 hover:text-teal-800 rounded-lg text-left text-xs font-bold transition-all cursor-pointer shadow-3xs flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                              <span>Set as <strong>Mutation: Reference</strong></span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSendNcbiToTool('mutation', 'modified')}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-505 hover:bg-teal-50/20 text-slate-700 hover:text-teal-800 rounded-lg text-left text-xs font-bold transition-all cursor-pointer shadow-3xs flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+                              <span>Set as <strong>Mutation: Test DNA</strong></span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Report Export Button */}
+                        <div className="flex justify-end gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={handleGenerateReport}
+                            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs cursor-pointer transition-all"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Generate Sequence Report Card
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border-2 border-slate-200 border-dashed rounded-xl p-12 flex flex-col items-center justify-center text-center space-y-2 h-full min-h-[300px]">
+                        <Database className="w-10 h-10 text-slate-300 animate-pulse" />
+                        <h4 className="text-sm font-bold text-slate-800">No NCBI Sequence Loaded</h4>
+                        <p className="text-xs text-slate-400 max-w-xs font-medium">Search for entries on the left, then click 'Fetch Sequence' to download and sanitize DNA nucleobases.</p>
+                      </div>
+                    )
                   )}
                 </div>
               </div>

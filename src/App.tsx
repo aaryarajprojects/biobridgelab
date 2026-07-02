@@ -7,7 +7,10 @@ import ResearchSimulations from './components/ResearchSimulations';
 import Challenges from './components/Challenges';
 import Dashboard from './components/Dashboard';
 import ResearchJourney from './components/ResearchJourney';
-import { Dna, BookOpen, FlaskConical, Award, LayoutDashboard, Database, Activity, Menu, X, ArrowUpRight, Compass, Lock } from 'lucide-react';
+import { 
+  Dna, BookOpen, FlaskConical, Award, LayoutDashboard, Database, 
+  Activity, Menu, X, ArrowUpRight, Compass, Lock, Download, RefreshCw 
+} from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'biobridge_lab_progress_v2';
 
@@ -32,6 +35,88 @@ export default function App() {
   const [view, setView] = useState<string>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [progress, setProgress] = useState<UserProgress>(INITIAL_PROGRESS);
+
+  // PWA Support State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Check if running as standalone PWA
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsStandalone(true);
+    }
+
+    // Register Service Worker for Offline Caching
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        console.log('[PWA] Service Worker registered scope:', registration.scope);
+        
+        // Listen for new service worker installation updates
+        registration.addEventListener('updatefound', () => {
+          const installingWorker = registration.installing;
+          if (installingWorker) {
+            installingWorker.addEventListener('statechange', () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New content is available; trigger PWA update notification
+                setShowUpdateBanner(true);
+              }
+            });
+          }
+        });
+      }).catch((err) => {
+        console.error('[PWA] Service Worker registration failed:', err);
+      });
+    }
+
+    // Handle BeforeInstallPrompt Event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      
+      // Check if user previously dismissed the custom banner in localStorage
+      const isDismissed = localStorage.getItem('dismissed_biobridge_install_banner') === 'true';
+      if (!isDismissed) {
+        setShowInstallBanner(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Track successfully completed installations
+    const handleAppInstalled = () => {
+      console.log('[PWA] BioBridge Lab successfully installed.');
+      setIsStandalone(true);
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`[PWA] Install choice outcome: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  const handleDismissInstallBanner = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem('dismissed_biobridge_install_banner', 'true');
+  };
+
+  const handleApplyUpdate = () => {
+    window.location.reload();
+  };
 
   // Load progress from localStorage on boot
   useEffect(() => {
@@ -222,8 +307,14 @@ export default function App() {
           className="flex items-center gap-2.5 cursor-pointer select-none group"
           id="brand-logo-container"
         >
-          <div className="w-9 h-9 rounded-lg bg-teal-50 border border-teal-200/60 flex items-center justify-center text-teal-600 group-hover:border-teal-400 transition-all">
-            <Dna className="w-5 h-5 text-teal-600" id="brand-helix-icon" />
+          <div className="w-9 h-9 rounded-lg bg-teal-50 border border-teal-200/60 flex items-center justify-center text-teal-600 group-hover:border-teal-400 transition-all overflow-hidden p-0.5">
+            <img 
+              src="https://cdn-icons-png.flaticon.com/512/3203/3203875.png" 
+              alt="BioBridge Logo" 
+              className="w-8 h-8 object-contain" 
+              id="brand-logo-img"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div className="text-left leading-none">
             <span className="text-base font-extrabold tracking-tight text-slate-900 block">BioBridge<span className="text-teal-600">Lab</span></span>
@@ -263,10 +354,23 @@ export default function App() {
           })}
         </nav>
 
-        {/* Global XP Widget */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-700" id="desktop-xp-widget">
-          <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider hidden lg:inline">{progress.studentName || 'Student Researcher'}:</span>
-          <span className="font-mono font-bold text-teal-700">{progress.xp} XP</span>
+        {/* Chrome PWA Install Support Button & Global XP Widget */}
+        <div className="flex items-center gap-2">
+          {deferredPrompt && (
+            <button
+              onClick={handleInstallApp}
+              className="hidden md:flex items-center gap-1 px-2.5 py-1.5 bg-teal-50 border border-teal-200 hover:border-teal-300 text-teal-700 hover:text-teal-800 rounded-xl text-[10px] lg:text-xs font-extrabold cursor-pointer transition-all shadow-3xs hover:scale-[1.02] active:scale-[0.98]"
+              id="pwa-header-install-btn"
+            >
+              <Download className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
+              <span>Install App</span>
+            </button>
+          )}
+
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-700" id="desktop-xp-widget">
+            <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider hidden lg:inline">{progress.studentName || 'Student Researcher'}:</span>
+            <span className="font-mono font-bold text-teal-700">{progress.xp} XP</span>
+          </div>
         </div>
 
         {/* Mobile menu trigger */}
@@ -326,6 +430,21 @@ export default function App() {
                   </button>
                 );
               })}
+
+              {/* Mobile Install Option */}
+              {deferredPrompt && (
+                <button
+                  onClick={() => {
+                    handleInstallApp();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full mt-2 p-3 rounded-lg text-left text-sm font-bold flex items-center gap-2.5 transition-all cursor-pointer bg-teal-600 text-white border border-teal-700 shadow-sm"
+                  id="mobile-nav-install"
+                >
+                  <Download className="w-4 h-4 text-teal-100 animate-pulse" />
+                  <span>Install BioBridge Lab</span>
+                </button>
+              )}
             </nav>
           </div>
         </>
@@ -416,6 +535,83 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Floating PWA Install & Update Banner Notifications */}
+      <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 max-w-sm space-y-3" id="pwa-banners-container">
+        {/* Custom Install Prompt Banner */}
+        {showInstallBanner && deferredPrompt && (
+          <div 
+            className="p-5 bg-white border border-slate-200 rounded-2xl shadow-xl flex gap-4 animate-fade-in text-left relative"
+            id="pwa-custom-install-banner"
+          >
+            <button 
+              onClick={handleDismissInstallBanner}
+              className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+              id="pwa-dismiss-banner-btn"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            
+            <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center shrink-0 overflow-hidden">
+              <img 
+                src="https://cdn-icons-png.flaticon.com/512/3203/3203875.png" 
+                alt="BioBridge Logo" 
+                className="w-9 h-9 object-contain"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="space-y-1 pr-4">
+                <h4 className="text-xs font-black text-slate-900 tracking-tight">Install BioBridge Lab</h4>
+                <p className="text-[11px] text-slate-500 leading-normal font-medium">
+                  Access your virtual bioinformatics learning lab anytime directly from your desktop or home screen with fast offline access.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleInstallApp}
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-extrabold rounded-lg cursor-pointer shadow-2xs transition-all"
+                  id="pwa-banner-install-btn"
+                >
+                  Install
+                </button>
+                <button
+                  onClick={handleDismissInstallBanner}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-[11px] font-extrabold rounded-lg cursor-pointer transition-all"
+                  id="pwa-banner-later-btn"
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Update Notification Banner */}
+        {showUpdateBanner && (
+          <div 
+            className="p-4 bg-teal-950 border border-teal-800 text-teal-100 rounded-xl shadow-xl flex items-center gap-3 animate-slide-up text-left"
+            id="pwa-update-banner"
+          >
+            <div className="w-8 h-8 rounded-lg bg-teal-900 flex items-center justify-center shrink-0">
+              <RefreshCw className="w-4 h-4 text-teal-300 animate-spin" />
+            </div>
+            <div className="flex-grow space-y-0.5">
+              <h4 className="text-[11px] font-extrabold tracking-tight">New BioBridge Lab update available</h4>
+              <p className="text-[9px] text-teal-300 font-medium">Reload to activate scientific sandbox enhancements.</p>
+            </div>
+            <button
+              onClick={handleApplyUpdate}
+              className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-extrabold rounded-lg cursor-pointer shadow-3xs transition-all"
+              id="pwa-update-apply-btn"
+            >
+              Update
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

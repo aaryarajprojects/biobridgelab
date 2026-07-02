@@ -237,6 +237,176 @@ export default function Dashboard({ progress, onResetProgress, onUpdateProfile }
               </div>
             </div>
           </div>
+
+          {/* Academic Transcript & Completed Experiments */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" id="academic-transcript-experiments">
+            {/* Completed Modules & Experiments Log */}
+            <div className="lg:col-span-1 p-6 rounded-xl bg-white border border-slate-200 space-y-5 shadow-xs flex flex-col justify-between">
+              <div className="space-y-4">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                  <BookOpen className="w-4.5 h-4.5 text-teal-600" />
+                  Academic Modules Transcript
+                </h2>
+                
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg border border-slate-100 bg-slate-50 text-left space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-teal-700 uppercase">M01: DNA Structure</span>
+                      <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        progress.completedLessons.includes("dna-basics") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-slate-100 border border-slate-200 text-slate-400"
+                      }`}>
+                        {progress.completedLessons.includes("dna-basics") ? "Completed" : "In Progress"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-800">Double Helix Structure & Base Pairing</p>
+                    <p className="text-[10px] text-slate-500 font-medium">Watson-Crick pairings, hydrogen bonds, and thermal stability calculation.</p>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-100 bg-slate-50 text-left space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-teal-700 uppercase">M02: Central Dogma</span>
+                      <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        progress.completedLessons.includes("transcription-translation") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-slate-100 border border-slate-200 text-slate-400"
+                      }`}>
+                        {progress.completedLessons.includes("transcription-translation") ? "Completed" : "In Progress"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-800">Transcription & Peptide Translation</p>
+                    <p className="text-[10px] text-slate-500 font-medium">RNA translation, codon usage matrices, and synthetic peptide strand synthesis.</p>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-100 bg-slate-50 text-left space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-teal-700 uppercase">M03: Data Repositories</span>
+                      <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        progress.completedLessons.includes("databases") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-slate-100 border border-slate-200 text-slate-400"
+                      }`}>
+                        {progress.completedLessons.includes("databases") ? "Completed" : "In Progress"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-800">NCBI Database & Accession Querying</p>
+                    <p className="text-[10px] text-slate-500 font-medium">Querying public reference fasta genomes and metadata analysis workflows.</p>
+                  </div>
+
+                  <div className="p-3 rounded-lg border border-slate-100 bg-slate-50 text-left space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-teal-700 uppercase">M04: Sequence Alignment</span>
+                      <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        progress.completedLessons.includes("alignment-basics") ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-slate-100 border border-slate-200 text-slate-400"
+                      }`}>
+                        {progress.completedLessons.includes("alignment-basics") ? "Completed" : "In Progress"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-800">Needleman-Wunsch Alignment Matrix</p>
+                    <p className="text-[10px] text-slate-500 font-medium">Gap penalties, matches, mismatches, and dynamic programming traceback algorithms.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Saved Experiments Section */}
+              <div className="pt-4 border-t border-slate-150 text-left space-y-3">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-teal-600" />
+                  Completed Lab Experiments ({progress.savedReports?.length || 0})
+                </h3>
+                {progress.savedReports && progress.savedReports.length > 0 ? (
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
+                    {progress.savedReports.map((report, idx) => (
+                      <div key={idx} className="p-2 border border-slate-100 rounded bg-slate-50 flex items-center justify-between text-[11px] font-bold">
+                        <span className="text-slate-700 truncate max-w-[150px]">{report.experimentName}</span>
+                        <span className="text-[9px] font-mono font-bold bg-slate-100 border border-slate-250 text-slate-500 px-1.5 py-0.5 rounded">
+                          {(report as any).patientId ? `Patient ID: ${(report as any).patientId}` : 'Lab Test'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">
+                    No clinical reports saved yet. Visit the Virtual Bio Lab or Clinical Simulations to analyze sequences and export academic reports.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Certificate of Computational Biology Literacy */}
+            <div className="lg:col-span-2 p-6 rounded-xl bg-white border border-slate-200 space-y-6 shadow-xs text-center flex flex-col justify-between" id="academic-certificate-section">
+              <div className="space-y-2 text-left">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                  <Award className="w-4.5 h-4.5 text-teal-600" />
+                  Academic Certification Placeholder
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Upon completing modules and clinical sandboxes, this certificate documents your achievement for academic presentation or secondary school science credentials.
+                </p>
+              </div>
+
+              {/* Certificate Border Design */}
+              <div className="relative p-6 md:p-8 rounded-xl border-4 border-double border-teal-600 bg-slate-50/50 space-y-6 select-none overflow-hidden" id="certificate-canvas">
+                {/* Watermark Helix background */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-3 pointer-events-none">
+                  <div className="text-teal-900 font-black text-9xl">DNA</div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-mono font-extrabold text-teal-700 tracking-widest block uppercase">
+                    BioBridge Lab • Student Science Initiative
+                  </span>
+                  <h3 className="text-lg md:text-xl font-black text-slate-900 tracking-tight font-serif italic">
+                    Certificate of Computational Biology Literacy
+                  </h3>
+                  <div className="w-24 h-0.5 bg-teal-600 mx-auto my-3"></div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider">This is to certify that student researcher</p>
+                  <p className="text-base font-extrabold text-teal-850 font-serif border-b border-dashed border-slate-300 max-w-xs mx-auto pb-1 text-center">
+                    {progress.studentName}
+                  </p>
+                </div>
+
+                <p className="text-xs text-slate-600 max-w-lg mx-auto font-medium leading-relaxed">
+                  has successfully performed in-silico gene sequence transcription, computed codon translations, analyzed GC molecular strand density, aligned global sequences, and completed simulated clinical diagnostic analyses on reference genomes.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 max-w-md mx-auto pt-4 text-left border-t border-slate-200/80">
+                  <div className="space-y-1 font-mono text-[9px] text-slate-500">
+                    <div><span className="font-bold text-slate-700">EXPERIENCE LEVEL:</span> Level {currentLevel} ({progress.xp} XP)</div>
+                    <div><span className="font-bold text-slate-700">MODULES MASTERED:</span> {progress.completedLessons.length} of 4</div>
+                  </div>
+                  <div className="space-y-1 font-mono text-[9px] text-slate-500 text-right">
+                    <div><span className="font-bold text-slate-700">STATUS RANK:</span> {bioTitle}</div>
+                    <div><span className="font-bold text-slate-700">VERIFICATION KEY:</span> BBL-{progress.xp}-SECURE</div>
+                  </div>
+                </div>
+
+                {/* Signatures */}
+                <div className="flex justify-between items-end pt-4 max-w-md mx-auto">
+                  <div className="text-center font-mono text-[9px] text-slate-400 space-y-1.5">
+                    <div className="w-28 border-b border-slate-300 pb-1 font-serif italic text-slate-600 text-center select-none font-bold">
+                      BioBridge Lab Core
+                    </div>
+                    <span>Board of Education Coordinator</span>
+                  </div>
+                  <div className="text-center font-mono text-[9px] text-slate-400 space-y-1.5">
+                    <div className="w-28 border-b border-slate-300 pb-1 font-serif italic text-teal-700 text-center select-none font-extrabold">
+                      Verified Sandbox
+                    </div>
+                    <span>Student-Led Sandbox Registry</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center gap-3">
+                <button 
+                  onClick={() => window.print()}
+                  className="px-4 py-2 border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-all shadow-3xs"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  Print Portfolio Transcript
+                </button>
+              </div>
+            </div>
+          </div>
         </>
       ) : (
         <div className="space-y-8 animate-fade-in" id="settings-tab-content">

@@ -309,7 +309,7 @@ export default function App() {
         >
           <div className="w-9 h-9 rounded-lg bg-teal-50 border border-teal-200/60 flex items-center justify-center text-teal-600 group-hover:border-teal-400 transition-all overflow-hidden p-0.5">
             <img 
-              src="https://cdn-icons-png.flaticon.com/512/3203/3203875.png" 
+              src="/biobridge_logo.jpg" 
               alt="BioBridge Logo" 
               className="w-8 h-8 object-contain" 
               id="brand-logo-img"
@@ -555,7 +555,7 @@ export default function App() {
             
             <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-150 flex items-center justify-center shrink-0 overflow-hidden">
               <img 
-                src="https://cdn-icons-png.flaticon.com/512/3203/3203875.png" 
+                src="/biobridge_logo.jpg" 
                 alt="BioBridge Logo" 
                 className="w-9 h-9 object-contain"
                 referrerPolicy="no-referrer"

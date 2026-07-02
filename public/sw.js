@@ -2,8 +2,9 @@ const CACHE_NAME = 'biobridge-lab-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/offline.html',
   '/manifest.json',
-  'https://cdn-icons-png.flaticon.com/512/3203/3203875.png',
+  '/biobridge_logo.jpg',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap'
 ];
 
@@ -43,12 +44,12 @@ self.addEventListener('fetch', (event) => {
   // Avoid caching or intercepting chrome-extension or external APIs except Google Fonts / icon
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  // SPA navigation fallback: serve index.html for navigation requests if offline
+  // SPA navigation fallback: serve index.html or fallback to offline.html for navigation requests if offline
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.match('/index.html') || caches.match('/');
+          return caches.match('/index.html') || caches.match('/') || caches.match('/offline.html');
         })
     );
     return;
@@ -73,7 +74,12 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // If a request is made for an image, we can return a default placeholder if needed
+          // If a request for page/resources fails entirely, fallback to offline.html
+          const acceptHeader = event.request.headers.get('accept');
+          if (acceptHeader && acceptHeader.includes('text/html')) {
+            return caches.match('/offline.html');
+          }
+          // If a request is made for an image or other static content, we can return a default placeholder
           return new Response('Offline content unavailable', {
             status: 503,
             statusText: 'Service Unavailable'

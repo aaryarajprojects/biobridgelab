@@ -17,6 +17,7 @@ export default function Dashboard({ progress, onResetProgress, onUpdateProfile }
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [tempName, setTempName] = useState(progress.studentName || 'Student Researcher');
   const [isSavedNameAlert, setIsSavedNameAlert] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
 
   // Calculate Level based on XP (e.g. 100 XP per level)
   const currentLevel = Math.max(1, Math.floor(progress.xp / 100) + 1);
@@ -46,10 +47,86 @@ export default function Dashboard({ progress, onResetProgress, onUpdateProfile }
 
   // Badge list
   const badges = [
-    { id: "badge-novice", title: "Helix Pioneer", desc: "Completed Level 1 DNA fundamentals", icon: Heart, unlocked: progress.completedLessons.includes("dna-basics") },
-    { id: "badge-diagnostician", title: "Variant Sentinel", desc: "Identified a target point mutation", icon: Shield, unlocked: progress.completedChallenges.includes("chal-mutation-id") },
-    { id: "badge-expert", title: "NCBI Annotator", desc: "Searched biological open source repositories", icon: BookOpen, unlocked: progress.completedLessons.includes("databases") },
-    { id: "badge-aligner", title: "Sequence Sovereign", desc: "Unlocked alignment algorithm concepts", icon: BrainCircuit, unlocked: progress.completedLessons.includes("alignment-basics") }
+    { 
+      id: "badge-novice", 
+      title: "Helix Pioneer", 
+      desc: "Completed Level 1 DNA fundamentals", 
+      icon: Heart, 
+      unlocked: progress.completedLessons.includes("dna-basics"),
+      tier: "Bronze",
+      longDesc: "This credential confirms successful completion of molecular DNA fundamentals, recognizing comprehension of Watson-Crick double helix geometry, hydrogen bonds, and GC content thermal stability.",
+      tip: "Complete 'Module 01: DNA Basics' in the learning center to unlock."
+    },
+    { 
+      id: "badge-first-simulation", 
+      title: "First Simulation Completed", 
+      desc: "Completed your first genomic laboratory simulation", 
+      icon: Activity, 
+      unlocked: (progress.completedSimulations?.length || 0) > 0 || (progress.savedReports?.length || 0) > 0 || (progress.simulationHistory?.length || 0) > 0,
+      tier: "Bronze",
+      longDesc: "Awarded upon successfully conducting an in-silico laboratory trial and formulating clinical hypotheses inside the Genomics Simulation Workspace.",
+      tip: "Select a clinical simulation project in the Research Workspace, perform the workflow, and save your clinical report."
+    },
+    { 
+      id: "badge-diagnostician", 
+      title: "Variant Sentinel", 
+      desc: "Identified a target point mutation", 
+      icon: Shield, 
+      unlocked: progress.completedChallenges.includes("chal-mutation-id"),
+      tier: "Silver",
+      longDesc: "Awarded to investigators who successfully perform sequence-level mutational analysis, identifying point transitions/transversions and translating them to primary peptide structural alterations.",
+      tip: "Solve the 'Point Mutation Identifier' puzzle in the Bioinformatics Challenges hub."
+    },
+    { 
+      id: "badge-expert", 
+      title: "NCBI Annotator", 
+      desc: "Searched biological open source repositories", 
+      icon: BookOpen, 
+      unlocked: progress.completedLessons.includes("databases"),
+      tier: "Silver",
+      longDesc: "Awarded for demonstrating proficiency in open-source biological repository querying, sequence indexing, and extracting reference FASTA genomes from registries like NCBI and GenBank.",
+      tip: "Complete 'Module 03: Data Repositories' in the learning center to unlock."
+    },
+    { 
+      id: "badge-academic-publisher", 
+      title: "Academic Publisher", 
+      desc: "Saved 3 or more detailed clinical laboratory briefs", 
+      icon: Database, 
+      unlocked: (progress.savedReports?.length || 0) >= 3,
+      tier: "Silver",
+      longDesc: "Recognizes excellent research documentation habits. Awarded for compiling and preserving a comprehensive portfolio of scientific reports on patient genomes.",
+      tip: "Conduct multiple genomic simulations in the research labs and compile at least 3 saved reports in your portfolio."
+    },
+    { 
+      id: "badge-aligner", 
+      title: "Sequence Sovereign", 
+      desc: "Unlocked alignment algorithm concepts", 
+      icon: BrainCircuit, 
+      unlocked: progress.completedLessons.includes("alignment-basics"),
+      tier: "Gold",
+      longDesc: "A master-level credential denoting proficiency in global/local alignment logic, dynamic programming matrices, and calculating sequence identity percentage.",
+      tip: "Complete 'Module 04: Sequence Alignment' in the learning center to unlock."
+    },
+    { 
+      id: "badge-genetic-code-master", 
+      title: "Genetic Code Master", 
+      desc: "Mastered DNA transcription and translation modules", 
+      icon: Terminal, 
+      unlocked: progress.completedLessons.includes("transcription-translation"),
+      tier: "Gold",
+      longDesc: "An elite bioinformatic credential certifying mastery of the cellular Central Dogma: transcribing DNA templates to messenger RNA and coding peptide translation sequences.",
+      tip: "Complete 'Module 02: Central Dogma' in the learning center to unlock."
+    },
+    { 
+      id: "badge-olympiad-champion", 
+      title: "Olympiad Champion", 
+      desc: "Solved 3 or more advanced computational biology challenges", 
+      icon: Award, 
+      unlocked: progress.completedChallenges.length >= 3,
+      tier: "Gold",
+      longDesc: "Recognizes persistent and rigorous analytical skills in solving multiple computational biology and genome-indexing puzzles.",
+      tip: "Correctly solve at least 3 distinct puzzles in the Bioinformatics Challenges workspace."
+    }
   ];
 
   const unlockedBadgesCount = badges.filter(b => b.unlocked).length;
@@ -206,32 +283,49 @@ export default function Dashboard({ progress, onResetProgress, onUpdateProfile }
                 Researcher Credentials ({unlockedBadgesCount}/{badges.length})
               </h2>
               <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                Earn official student researcher badges for outstanding performance in clinical simulations and theory quizzes.
+                Earn official student researcher badges for outstanding performance in clinical simulations and theory quizzes. Click a credential to inspect its full bio-academic certification.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2" id="badges-grid">
                 {badges.map(badge => {
                   const IconComp = badge.icon;
                   return (
-                    <div
+                    <button
                       key={badge.id}
-                      className={`p-4 rounded-lg border flex gap-3 transition-all ${
+                      type="button"
+                      onClick={() => setSelectedBadge(badge)}
+                      className={`p-4 rounded-xl border flex gap-3 transition-all text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-teal-500 hover:scale-[1.015] ${
                         badge.unlocked
-                          ? 'bg-slate-50 border-slate-200 text-slate-700 shadow-3xs'
-                          : 'border-slate-150 bg-slate-50/20 opacity-35 select-none'
+                          ? 'bg-slate-50/50 border-slate-200 hover:border-teal-400 hover:bg-white text-slate-700 shadow-3xs'
+                          : 'border-slate-150 bg-slate-50/20 opacity-45 hover:opacity-70 hover:bg-slate-50/55'
                       }`}
                       id={`badge-card-${badge.id}`}
                     >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-                        badge.unlocked ? 'bg-teal-50 text-teal-800 border-teal-200' : 'bg-slate-100 border-slate-200 text-slate-400'
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${
+                        badge.unlocked 
+                          ? badge.tier === 'Gold' ? 'bg-amber-50 text-amber-600 border-amber-200 shadow-3xs'
+                            : badge.tier === 'Silver' ? 'bg-teal-50 text-teal-600 border-teal-200 shadow-3xs'
+                            : 'bg-rose-50 text-rose-600 border-rose-200 shadow-3xs'
+                          : 'bg-slate-100 border-slate-250 text-slate-400'
                       }`}>
-                        <IconComp className="w-5 h-5" />
+                        <IconComp className="w-5.5 h-5.5" />
                       </div>
-                      <div className="space-y-0.5 text-left">
-                        <h4 className="text-xs font-bold text-slate-800 leading-tight">{badge.title}</h4>
-                        <p className="text-[10px] text-slate-500 leading-tight font-medium">{badge.desc}</p>
+                      <div className="space-y-0.5 text-left flex-grow">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="text-xs font-black text-slate-800 leading-tight truncate">{badge.title}</h4>
+                          <span className={`text-[8px] font-mono font-bold uppercase px-1.5 py-0.2 rounded border shrink-0 ${
+                            badge.unlocked
+                              ? badge.tier === 'Gold' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : badge.tier === 'Silver' ? 'bg-teal-50 text-teal-700 border-teal-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-slate-100 text-slate-400 border-slate-200'
+                          }`}>
+                            {badge.tier}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight font-medium line-clamp-2">{badge.desc}</p>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -622,6 +716,115 @@ export default function Dashboard({ progress, onResetProgress, onUpdateProfile }
             <span className="hidden sm:inline-block text-[9px] font-mono font-bold bg-teal-50 border border-teal-200 text-teal-700 px-2 py-0.5 rounded-full uppercase">
               100% Client-Side
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* BADGE DETAIL MODAL OVERLAY */}
+      {selectedBadge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in" id="badge-detail-modal">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden flex flex-col focus:outline-none animate-scale-in" id="badge-detail-card">
+            
+            {/* Top Close Bar */}
+            <div className="flex justify-end p-4 pb-0">
+              <button
+                type="button"
+                onClick={() => setSelectedBadge(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-all"
+                aria-label="Close"
+              >
+                <span className="text-lg font-bold font-mono">×</span>
+              </button>
+            </div>
+
+            {/* Badge Graphic / Medal Centerpiece */}
+            <div className="px-6 pb-2 text-center flex flex-col items-center space-y-3">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center border-4 border-double shadow-md transition-all ${
+                selectedBadge.unlocked 
+                  ? selectedBadge.tier === 'Gold' ? 'bg-amber-50 text-amber-600 border-amber-300 shadow-amber-100/50'
+                    : selectedBadge.tier === 'Silver' ? 'bg-teal-50 text-teal-600 border-teal-300 shadow-teal-100/50'
+                    : 'bg-rose-50 text-rose-600 border-rose-300 shadow-rose-100/50'
+                  : 'bg-slate-50 text-slate-350 border-slate-250 opacity-60'
+              }`}>
+                {React.createElement(selectedBadge.icon, { className: "w-9 h-9" })}
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-center items-center gap-2">
+                  <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border ${
+                    selectedBadge.unlocked
+                      ? selectedBadge.tier === 'Gold' ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : selectedBadge.tier === 'Silver' ? 'bg-teal-100 text-teal-800 border-teal-200'
+                        : 'bg-rose-100 text-rose-800 border-rose-200'
+                      : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}>
+                    {selectedBadge.tier} Milestone
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
+                  {selectedBadge.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Status Banner */}
+            <div className="px-6 py-2">
+              {selectedBadge.unlocked ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-150 rounded-xl text-center space-y-0.5 shadow-4xs animate-pulse">
+                  <span className="text-[10px] font-mono font-extrabold text-emerald-800 uppercase tracking-wider block">✓ Credential Unlocked & Active</span>
+                  <p className="text-[10px] text-emerald-600 font-bold">Successfully logged to student researcher profile</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-0.5 shadow-4xs">
+                  <span className="text-[10px] font-mono font-extrabold text-slate-500 uppercase tracking-wider block">🔒 Credential Locked</span>
+                  <p className="text-[10px] text-slate-400 font-bold">Complete curriculum activities to unlock</p>
+                </div>
+              )}
+            </div>
+
+            {/* Credential Long Description */}
+            <div className="p-6 pt-2 space-y-4 text-xs text-slate-600 leading-relaxed text-left">
+              <div className="space-y-1.5">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Credential Background</span>
+                <p className="text-slate-700 font-medium bg-slate-50/50 p-3 rounded-lg border border-slate-150/70">
+                  {selectedBadge.longDesc}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
+                  {selectedBadge.unlocked ? "Portfolio Application" : "Unlocking Criteria"}
+                </span>
+                <div className={`p-3 rounded-lg border text-[11px] font-bold ${
+                  selectedBadge.unlocked 
+                    ? 'bg-emerald-50/20 border-emerald-100 text-slate-700' 
+                    : 'bg-amber-50/20 border-amber-100 text-amber-900'
+                }`}>
+                  {selectedBadge.unlocked ? (
+                    <div className="space-y-1 font-medium">
+                      <p className="font-bold text-emerald-800">Mastery Verified</p>
+                      <p className="text-slate-500 text-[10px]">This certification is officially added to your printable Academic Portfolio Transcript.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 font-medium">
+                      <p className="font-bold text-amber-800">Action Required:</p>
+                      <p className="text-amber-700 text-[10px]">{selectedBadge.tip}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer close */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedBadge(null)}
+                className="w-full sm:w-auto px-5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold cursor-pointer shadow-3xs transition-all"
+              >
+                Close Credential
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FlaskConical, AlertCircle, RefreshCw, Activity, Copy, 
   CheckCircle2, HelpCircle, Download, BookOpen, Search, 
   GitCompare, Layers, Info, Sparkles, FileText, Check, ArrowRight,
-  ClipboardList, X, History, Database, Dna, Bookmark
+  ClipboardList, X, History, Database, Dna, Bookmark, Play, Pause, RotateCcw
 } from 'lucide-react';
 import { SavedReport, UserProgress } from '../types';
 import SequenceVisualizer from './SequenceVisualizer';
@@ -431,7 +431,7 @@ interface VirtualLabProps {
 
 export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) {
   // Tabs for the "Research Toolkit"
-  const [activeTab, setActiveTab] = useState<'analyzer' | 'comparator' | 'mutation' | 'translator' | 'ncbi'>('analyzer');
+  const [activeTab, setActiveTab] = useState<'analyzer' | 'comparator' | 'mutation' | 'translator' | 'ncbi' | 'gel'>('analyzer');
   
   // Dashboard & Past Runs States
   const [isDashboardExpanded, setIsDashboardExpanded] = useState<boolean>(false);
@@ -498,6 +498,119 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   const [transSeq, setTransSeq] = useState<string>('ATGTCACCACAAACAGAGACTAAAGCA');
   const [transError, setTransError] = useState<string>('');
   const [transResult, setTransResult] = useState<any>(null);
+
+  // 6. Tool 6: Gel Electrophoresis States
+  const [gelRunning, setGelRunning] = useState<boolean>(false);
+  const [gelTimeElapsed, setGelTimeElapsed] = useState<number>(0);
+  const [gelRunTime, setGelRunTime] = useState<number>(30);
+  const [gelVoltage, setGelVoltage] = useState<number>(100);
+  const [gelAgarosePercent, setGelAgarosePercent] = useState<number>(1.5);
+  const [gelPreset, setGelPreset] = useState<'huntington' | 'sickle' | 'custom'>('huntington');
+  const [customLane2Input, setCustomLane2Input] = useState<string>('500');
+  const [customLane3Input, setCustomLane3Input] = useState<string>('300, 700');
+  const [customLane4Input, setCustomLane4Input] = useState<string>('150, 400, 850');
+  const [gelUvPower, setGelUvPower] = useState<boolean>(false);
+  const [gelActiveProbe, setGelActiveProbe] = useState<any | null>(null);
+  const [gelResult, setGelResult] = useState<any>(null);
+
+  const calculateGelPosition = (sizeBp: number, agarose: number, voltage: number, elapsedMinutes: number): number => {
+    const logSize = Math.log10(sizeBp);
+    const baseSpeed = Math.max(0, 4.2 - logSize) * 2.8; 
+    let agaroseFactor = 1.0;
+    if (agarose === 0.8) {
+      agaroseFactor = 1.4;
+    } else if (agarose === 1.5) {
+      agaroseFactor = 1.0;
+    } else if (agarose === 3.0) {
+      const penalty = sizeBp > 400 ? Math.pow(sizeBp / 400, 1.2) : 1;
+      agaroseFactor = 0.5 / penalty;
+    }
+    const voltageMultiplier = voltage / 100;
+    const migration = baseSpeed * agaroseFactor * voltageMultiplier * elapsedMinutes * 1.65;
+    return 40 + migration;
+  };
+
+  const getGelLanes = useMemo(() => {
+    const ladderBands = [1000, 900, 800, 700, 600, 500, 400, 300, 200, 100];
+    if (gelPreset === 'huntington') {
+      return [
+        { name: 'DNA Ladder', bands: ladderBands, isLadder: true, desc: 'Standard 100-1000 bp DNA size marker.' },
+        { name: 'Eleanor Vance (Normal)', bands: [160], isLadder: false, desc: 'Normal range HTT allele: 20 CAG repeats. PCR size: 160bp.' },
+        { name: 'Marcus Thorne (Carrier)', bands: [214], isLadder: false, desc: 'Premutation range HTT allele: 38 CAG repeats. PCR size: 214bp.' },
+        { name: 'David Sterling (Affected)', bands: [244], isLadder: false, desc: 'Affected expanded HTT allele: 48 CAG repeats. PCR size: 244bp.' }
+      ];
+    } else if (gelPreset === 'sickle') {
+      return [
+        { name: 'DNA Ladder', bands: ladderBands, isLadder: true, desc: 'Standard 100-1000 bp DNA size marker.' },
+        { name: 'HbA Control (Normal)', bands: [200, 150], isLadder: false, desc: 'Normal homozygous beta-globin (HbA). MstII digest splits 350bp PCR product into 200bp & 150bp.' },
+        { name: 'HbS Control (Mutant)', bands: [350], isLadder: false, desc: 'Sickle cell mutant homozygous (HbS). Lost restriction site leaves PCR product undigested at 350bp.' },
+        { name: 'Patient (Carrier)', bands: [350, 200, 150], isLadder: false, desc: 'Heterozygous sickle cell carrier (HbA/HbS). Yields 350bp mutant allele and 200bp & 150bp normal alleles.' }
+      ];
+    } else {
+      const parseBands = (str: string) => {
+        return str
+          .split(',')
+          .map(s => parseInt(s.trim()))
+          .filter(n => !isNaN(n) && n >= 50 && n <= 1200);
+      };
+      return [
+        { name: 'DNA Ladder', bands: ladderBands, isLadder: true, desc: 'Standard 100-1000 bp DNA size marker.' },
+        { name: 'Custom Well 2', bands: parseBands(customLane2Input), isLadder: false, desc: 'User-defined custom PCR DNA fragment(s).' },
+        { name: 'Custom Well 3', bands: parseBands(customLane3Input), isLadder: false, desc: 'User-defined custom PCR DNA fragment(s).' },
+        { name: 'Custom Well 4', bands: parseBands(customLane4Input), isLadder: false, desc: 'User-defined custom PCR DNA fragment(s).' }
+      ];
+    }
+  }, [gelPreset, customLane2Input, customLane3Input, customLane4Input]);
+
+  useEffect(() => {
+    let intervalId: any = null;
+    if (gelRunning) {
+      intervalId = setInterval(() => {
+        setGelTimeElapsed(prev => {
+          if (prev >= gelRunTime) {
+            setGelRunning(false);
+            clearInterval(intervalId);
+            return gelRunTime;
+          }
+          return prev + 0.5;
+        });
+      }, 100);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [gelRunning, gelRunTime]);
+
+  useEffect(() => {
+    const lanes = getGelLanes;
+    let bandsAnalyzedCount = 0;
+    const laneSummaries: string[] = [];
+
+    lanes.forEach(lane => {
+      if (lane.isLadder) return;
+      const visibleBands = lane.bands.filter(b => {
+        const y = calculateGelPosition(b, gelAgarosePercent, gelVoltage, gelTimeElapsed);
+        return y <= 360;
+      });
+      bandsAnalyzedCount += visibleBands.length;
+      const runOffCount = lane.bands.length - visibleBands.length;
+      
+      let laneStr = `${lane.name}: [${visibleBands.map(b => `${b}bp`).join(', ')}]`;
+      if (runOffCount > 0) {
+        laneStr += ` (${runOffCount} band(s) run-off)`;
+      }
+      laneSummaries.push(laneStr);
+    });
+
+    setGelResult({
+      laneNames: lanes.map(l => l.name),
+      agarosePercent: gelAgarosePercent,
+      voltage: gelVoltage,
+      runTime: gelTimeElapsed,
+      bandsAnalyzedCount,
+      laneResultsSummary: laneSummaries.join('; ')
+    });
+  }, [gelTimeElapsed, gelRunning, getGelLanes, gelAgarosePercent, gelVoltage]);
 
   // 5. Tool 5: NCBI Database Search & Fetch States
   const [ncbiDb, setNcbiDb] = useState<'nucleotide' | 'pubmed' | 'protein'>('nucleotide');
@@ -1349,6 +1462,14 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
       observation = `Transcribed mRNA sequence: [${transResult.rnaSeq}]. Assembled ${transResult.codonCount} amino acid residues, including starting initiator codes.`;
       conclusion = `The molecular translation successfully assembled the peptide chain [${transResult.proteinPeptide}]. This highlights the biological mechanism of the central dogma, demonstrating translation from single-letter nucleotide codes to complex protein products.`;
     }
+    else if (activeTab === 'gel' && gelResult) {
+      experimentName = 'Agarose Gel Electrophoresis & DNA Band Sizing';
+      inputSequence = gelResult.laneNames.join(' | ');
+      method = `Electrophoretic migration of PCR fragments in a ${gelResult.agarosePercent}% Agarose gel, run at ${gelResult.voltage}V for ${gelResult.runTime} minutes.`;
+      resultSummary = `Resolved Lanes: ${gelResult.laneNames.length} | Separated Bands: ${gelResult.bandsAnalyzedCount}`;
+      observation = `Visualized DNA fragment migration under a UV transilluminator. Sizes resolved relative to the DNA ladder standard curve: ${gelResult.laneResultsSummary}`;
+      conclusion = `The Gel Electrophoresis analysis resolved distinct band sizes for each biological sequence. This physical separation validates simulated PCR amplification products, confirming genetic insert sizes, deletions, or wild-type genomic status.`;
+    }
     else if (activeTab === 'ncbi') {
       if (ncbiDb === 'nucleotide') {
         if (!ncbiFetchedSeq || !ncbiFetchedMeta) {
@@ -1777,6 +1898,7 @@ ${activeReport.conclusion}
             { id: 'comparator', label: 'Sequence Comparator', icon: GitCompare, desc: 'Aligns and compares two sequences side-by-side.' },
             { id: 'mutation', label: 'Mutation Explorer', icon: Layers, desc: 'Analyzes substitutions, deletions, and reading frames.' },
             { id: 'translator', label: 'Translation Explorer', icon: Activity, desc: 'Converts DNA to RNA and amino acid peptide chains.' },
+            { id: 'gel', label: 'Gel Electrophoresis', icon: FlaskConical, desc: 'Run simulated PCR fragments on agarose gels to size DNA.' },
             { id: 'ncbi', label: 'NCBI Database Search', icon: Database, desc: 'Query NCBI Nucleotide database, fetch live FASTA sequences, and analyze them.' }
           ].map(tab => {
             const Icon = tab.icon;
@@ -2724,6 +2846,487 @@ ${activeReport.conclusion}
                       <p className="text-xs text-slate-400 max-w-xs font-medium">Input baseline templates on the left and click Translate to explore central dogma ribosomal transcription and peptide assemblies.</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TOOL 6: AGAROSE GEL ELECTROPHORESIS */}
+          {activeTab === 'gel' && (
+            <div className="space-y-6 animate-fade-in" id="tool-gel-panel">
+              {/* Pre-use Explanation */}
+              <div className="p-4 bg-teal-50/40 border border-teal-150 rounded-xl space-y-2 text-xs">
+                <span className="text-[10px] bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max">
+                  Agarose Gel Electrophoresis Simulator
+                </span>
+                <h4 className="font-extrabold text-teal-950 font-sans tracking-tight">How Gel Electrophoresis Works</h4>
+                <p className="text-slate-600 leading-relaxed font-medium">
+                  DNA molecules carry a net negative electrical charge. When loaded into an agarose gel matrix and exposed to an electric field, they migrate toward the positive anode (+). Smaller molecules pass through the microscopic pores of the agarose gel faster than larger ones, causing them to separate into distinct size bands. By running a known reference <strong>DNA Ladder</strong> in parallel, you can estimate the size (base pairs) of your PCR products using a log-linear standard curve.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                {/* Control Panel */}
+                <div className="xl:col-span-5 space-y-6">
+                  {/* Preset Selector */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">Simulation Preset & Assay</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'huntington', label: 'Huntington CAG' },
+                        { id: 'sickle', label: 'Sickle Cell RFLP' },
+                        { id: 'custom', label: 'Custom Sizing' }
+                      ].map(preset => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            setGelPreset(preset.id as any);
+                            setGelTimeElapsed(0);
+                            setGelRunning(false);
+                            setGelActiveProbe(null);
+                          }}
+                          className={`py-2 px-1 text-center font-bold text-[10.5px] rounded-lg border transition-all cursor-pointer ${
+                            gelPreset === preset.id
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-3xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <p className="text-[11px] text-slate-500 font-medium leading-normal">
+                      {gelPreset === 'huntington' && 'Assay: Huntington HTT gene PCR diagnostics. Measures trinucleotide repeat expansion in Eleanor, Marcus, and David.'}
+                      {gelPreset === 'sickle' && 'Assay: sickle cell restriction digest (RFLP). Normal homozygous (HbA) digest cleaves the 350bp PCR product into 200bp & 150bp.'}
+                      {gelPreset === 'custom' && 'Assay: Custom molecular fragment sizing. Manually input target fragment base pairs (bp) for Lanes 2, 3, and 4.'}
+                    </p>
+                  </div>
+
+                  {/* Chamber Physics Setup */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                    <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">Chamber physical specifications</span>
+                    
+                    {/* Agarose Gel Concentration */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                        <span>Agarose Concentration:</span>
+                        <span className="text-teal-600 font-extrabold">{gelAgarosePercent}% Agarose</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[0.8, 1.5, 3.0].map(pct => (
+                          <button
+                            key={pct}
+                            type="button"
+                            disabled={gelRunning}
+                            onClick={() => {
+                              setGelAgarosePercent(pct);
+                              setGelTimeElapsed(0);
+                            }}
+                            className={`py-1.5 text-center font-bold text-[10.5px] rounded-lg border transition-all ${
+                              gelRunning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                            } ${
+                              gelAgarosePercent === pct
+                                ? 'bg-teal-600 text-white border-teal-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {pct}% {pct === 0.8 ? '(Large bp)' : pct === 1.5 ? '(Medium)' : '(Small bp)'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Voltage */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                        <span>Chamber Voltage:</span>
+                        <span className="text-teal-600 font-extrabold">{gelVoltage}V</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[50, 100, 150].map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            disabled={gelRunning}
+                            onClick={() => {
+                              setGelVoltage(v);
+                              setGelTimeElapsed(0);
+                            }}
+                            className={`py-1.5 text-center font-bold text-[10.5px] rounded-lg border transition-all ${
+                              gelRunning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                            } ${
+                              gelVoltage === v
+                                ? 'bg-teal-600 text-white border-teal-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {v}V {v === 50 ? '(Slow)' : v === 100 ? '(Normal)' : v === 150 ? '(Turbo)' : ''}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Target Run Time */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] font-bold text-slate-600">
+                        <span>Target Migration Run Time:</span>
+                        <span className="text-teal-600 font-extrabold">{gelRunTime} Minutes</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[10, 20, 30, 40].map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            disabled={gelRunning}
+                            onClick={() => {
+                              setGelRunTime(t);
+                              setGelTimeElapsed(0);
+                            }}
+                            className={`py-1.5 text-center font-bold text-[10.5px] rounded-lg border transition-all ${
+                              gelRunning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                            } ${
+                              gelRunTime === t
+                                ? 'bg-teal-600 text-white border-teal-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {t} min
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Custom Inputs Panel */}
+                  {gelPreset === 'custom' && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 animate-fade-in">
+                      <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">Configure Fragment sizes (50bp - 1200bp)</span>
+                      
+                      <div className="grid grid-cols-1 gap-2.5">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Well 2 fragments (comma-separated bp):</label>
+                          <input
+                            type="text"
+                            value={customLane2Input}
+                            disabled={gelRunning}
+                            onChange={(e) => {
+                              setCustomLane2Input(e.target.value);
+                              setGelTimeElapsed(0);
+                            }}
+                            placeholder="e.g. 500"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 h-8"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Well 3 fragments (comma-separated bp):</label>
+                          <input
+                            type="text"
+                            value={customLane3Input}
+                            disabled={gelRunning}
+                            onChange={(e) => {
+                              setCustomLane3Input(e.target.value);
+                              setGelTimeElapsed(0);
+                            }}
+                            placeholder="e.g. 300, 700"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 h-8"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Well 4 fragments (comma-separated bp):</label>
+                          <input
+                            type="text"
+                            value={customLane4Input}
+                            disabled={gelRunning}
+                            onChange={(e) => {
+                              setCustomLane4Input(e.target.value);
+                              setGelTimeElapsed(0);
+                            }}
+                            placeholder="e.g. 150, 450, 800"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs text-slate-800 focus:outline-none focus:border-teal-500 h-8"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chamber Execution Controls */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                    <span className="text-[10px] text-slate-400 font-mono font-bold block uppercase tracking-wider">Chamber Power Supply</span>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      {!gelRunning ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (gelTimeElapsed >= gelRunTime) {
+                              setGelTimeElapsed(0);
+                            }
+                            setGelRunning(true);
+                            setGelActiveProbe(null);
+                          }}
+                          className="flex-1 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer border border-transparent"
+                        >
+                          <Play className="w-4 h-4 fill-white text-white" />
+                          <span>{gelTimeElapsed > 0 ? 'Resume Power' : 'Turn On Power'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setGelRunning(false)}
+                          className="flex-1 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer animate-pulse border border-transparent"
+                        >
+                          <Pause className="w-4 h-4 fill-white text-white" />
+                          <span>Stop Electrophoresis</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGelRunning(false);
+                          setGelTimeElapsed(0);
+                          setGelActiveProbe(null);
+                        }}
+                        className="py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition-all shadow-3xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4 text-slate-400" />
+                        <span>Reset Gel</span>
+                      </button>
+                    </div>
+
+                    {/* Timer progress bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-bold text-slate-500 font-mono">
+                        <span>Timer: {gelTimeElapsed.toFixed(1)} / {gelRunTime} min</span>
+                        {gelRunning && <span className="text-teal-650 animate-pulse font-extrabold">● ELECTROPHORESIS RUNNING</span>}
+                        {gelTimeElapsed >= gelRunTime && <span className="text-emerald-600 font-extrabold">● RUN COMPLETED</span>}
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden border border-slate-300">
+                        <div
+                          className="bg-teal-600 h-full transition-all duration-100"
+                          style={{ width: `${Math.min(100, (gelTimeElapsed / gelRunTime) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Transilluminator Light Source */}
+                    <div className="pt-2 border-t border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-bold text-slate-700">UV Transilluminator:</span>
+                          <p className="text-[10px] text-slate-400">Fluoresces DNA bands under UV illumination.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setGelUvPower(!gelUvPower)}
+                          className={`py-2 px-3.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-3xs cursor-pointer ${
+                            gelUvPower
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-indigo-50 border border-indigo-500 shadow-[0_0_12px_rgba(79,70,229,0.3)]'
+                              : 'bg-white hover:bg-slate-150 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          <Sparkles className={`w-3.5 h-3.5 ${gelUvPower ? 'text-amber-400 animate-spin-slow' : 'text-slate-400'}`} />
+                          <span>{gelUvPower ? 'UV ON' : 'UV OFF (White)'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gel Rig Screen */}
+                <div className="xl:col-span-7 space-y-6">
+                  {/* Gel Chamber Rendering */}
+                  <div className="bg-slate-950 border-2 border-slate-900 rounded-2xl p-4 shadow-inner relative overflow-hidden flex flex-col items-center">
+                    {/* Electrode bars */}
+                    <div className="w-full flex items-center justify-between border-b border-slate-800 pb-2 mb-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shrink-0" />
+                        <span className="font-mono text-[10px] text-red-500 font-extrabold uppercase tracking-widest">Cathode (-)</span>
+                      </div>
+                      <div className="font-mono text-[9px] text-slate-500 font-semibold tracking-wider">AGAROSE CHAMBER CELL</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[10px] text-blue-500 font-extrabold uppercase tracking-widest">Anode (+)</span>
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse shrink-0" />
+                      </div>
+                    </div>
+
+                    {/* Rising bubbles if running */}
+                    {gelRunning && (
+                      <div className="absolute inset-x-0 bottom-0 top-12 overflow-hidden pointer-events-none z-10">
+                        {Array.from({ length: 15 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="absolute bg-white/25 rounded-full animate-bubble"
+                            style={{
+                              left: `${10 + (i * 6.5) + (Math.random() * 5)}%`,
+                              width: `${2 + (Math.random() * 4)}px`,
+                              height: `${2 + (Math.random() * 4)}px`,
+                              bottom: `-${10 + (Math.random() * 20)}px`,
+                              animationDelay: `${Math.random() * 3}s`,
+                              animationDuration: `${2 + (Math.random() * 3)}s`
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* The physical Gel Slab */}
+                    <div
+                      className={`w-full max-w-md h-[400px] rounded-xl border border-slate-800/80 transition-all duration-300 relative flex flex-col justify-between p-4 ${
+                        gelUvPower
+                          ? 'bg-gradient-to-b from-indigo-950 to-purple-950/95 shadow-[inset_0_0_24px_rgba(79,70,229,0.45)]'
+                          : 'bg-slate-300/30 shadow-inner border-slate-800'
+                      }`}
+                    >
+                      <div className="absolute top-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-slate-500/40 font-bold uppercase tracking-widest select-none">
+                        WET CHAMBER GEL BODY
+                      </div>
+
+                      {/* Wells Header */}
+                      <div className="grid grid-cols-4 gap-6 px-4 pt-1 pb-4 relative z-20">
+                        {getGelLanes.map((lane, idx) => (
+                          <div key={idx} className="flex flex-col items-center">
+                            {/* Well cutout box */}
+                            <div className="w-14 h-4 bg-slate-950 border border-slate-800 rounded flex items-center justify-center text-[9px] font-mono font-bold text-slate-500 select-none shadow-inner">
+                              Well {idx + 1}
+                            </div>
+                            <div className="text-[9.5px] font-extrabold text-slate-400 font-mono mt-1 text-center truncate w-full" title={lane.name}>
+                              {idx === 0 ? 'Ladder' : `Lane ${idx + 1}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Lane tracks with bands */}
+                      <div className="absolute inset-x-4 top-16 bottom-4 grid grid-cols-4 gap-6 z-20">
+                        {getGelLanes.map((lane, laneIdx) => (
+                          <div key={laneIdx} className="w-full h-full relative border-r border-dashed border-slate-800/10 last:border-0">
+                            {lane.bands.map((band, bandIdx) => {
+                              const y = calculateGelPosition(band, gelAgarosePercent, gelVoltage, gelTimeElapsed);
+                              const hasRunOff = y > 360;
+
+                              if (hasRunOff) return null;
+
+                              const isProbeActive = gelActiveProbe && gelActiveProbe.laneIdx === laneIdx && gelActiveProbe.bandIdx === bandIdx;
+
+                              return (
+                                <button
+                                  key={bandIdx}
+                                  type="button"
+                                  onClick={() => {
+                                    setGelActiveProbe({
+                                      laneIdx,
+                                      bandIdx,
+                                      sizeBp: band,
+                                      laneName: lane.name,
+                                      desc: lane.desc || 'Standard reference size band fragment used for interpolation molecular sizing.',
+                                      migrationY: y
+                                    });
+                                  }}
+                                  className={`absolute left-0 w-full h-2 rounded transition-all duration-300 transform -translate-y-1/2 focus:outline-none cursor-pointer ${
+                                    gelUvPower
+                                      ? isProbeActive
+                                        ? 'bg-amber-400 border border-amber-200 shadow-[0_0_15px_#f59e0b] scale-y-125 z-30'
+                                        : 'bg-green-400 border border-green-300 shadow-[0_0_8px_#4ade80] hover:bg-green-300 hover:shadow-[0_0_12px_#4ade80] z-20'
+                                      : 'bg-slate-400/20 border border-slate-400/10 hover:bg-slate-400/30 z-20'
+                                  }`}
+                                  style={{ top: `${y}px` }}
+                                  title={`${lane.name}: ${band}bp`}
+                                />
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[8px] text-slate-500/40 font-bold uppercase tracking-widest select-none">
+                        ANODE SIDE (+) MIGRATION DIRECTION
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sizing standard curve and band inspector details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Sizing Standard Graph Card */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <BookOpen className="w-4 h-4 text-teal-650" />
+                          <span className="text-xs font-bold text-slate-700">Molecular Standard Curve Info</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                          In molecular biology, DNA fragments migrate exponentially in relation to their length. Plotting the distance migrated versus the log₁₀(Base Pairs) generates a standard calibration curve used to estimate unknown DNA fragment lengths.
+                        </p>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-200 mt-3 space-y-1 font-mono text-[9px] text-slate-600">
+                        <div className="flex justify-between">
+                          <span>Log₁₀ Formula:</span>
+                          <span className="font-bold text-teal-800">Migration ∝ 4.2 - Log₁₀(bp)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Standard Ladder:</span>
+                          <span>100 bp (lowest) - 1000 bp (highest)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Resolution Range:</span>
+                          <span>{gelAgarosePercent === 3.0 ? 'Optimal for <300bp fragments' : gelAgarosePercent === 0.8 ? 'Optimal for >600bp fragments' : 'Optimal for broad sizes'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Band Detail panel */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between min-h-[140px]">
+                      {gelActiveProbe ? (
+                        <div className="space-y-2 animate-fade-in">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-0.5">
+                              <span className="text-[9px] text-teal-650 font-mono font-bold uppercase block tracking-wider">
+                                {gelActiveProbe.laneName}
+                              </span>
+                              <h4 className="text-sm font-extrabold text-slate-800 font-sans tracking-tight">
+                                Size: {gelActiveProbe.sizeBp} bp Fragment
+                              </h4>
+                            </div>
+                            <span className="px-2 py-0.5 bg-teal-100 border border-teal-200 text-teal-800 font-mono font-bold text-[9px] rounded">
+                              Y: {gelActiveProbe.migrationY.toFixed(0)}px
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                            {gelActiveProbe.desc}
+                          </p>
+
+                          <div className="text-[9px] text-slate-400 font-mono">
+                            Log₁₀ Molecular Mass value: {Math.log10(gelActiveProbe.sizeBp).toFixed(4)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center h-full space-y-1 py-4 text-slate-400">
+                          <FlaskConical className="w-8 h-8 text-slate-300 animate-pulse" />
+                          <h5 className="text-[11px] font-bold text-slate-700">Band Inspector Tool</h5>
+                          <p className="text-[10px] max-w-xs font-medium leading-normal">
+                            {gelUvPower 
+                              ? 'Click any glowing fluorescent DNA band on the gel above to inspect its size and clinical diagnostic values.' 
+                              : 'Turn on the UV Transilluminator to view the stained DNA bands, then select a band to inspect.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Save and Generate buttons */}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={handleGenerateReport}
+                      className="px-4 py-2 bg-teal-650 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-3xs cursor-pointer border border-transparent"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Generate Lab Report
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

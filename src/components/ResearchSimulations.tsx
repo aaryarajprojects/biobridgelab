@@ -4,7 +4,8 @@ import {
   AlertTriangle, ShieldCheck, RefreshCw, Dna, Info, Sparkles, 
   HelpCircle, ArrowRight, Layers, Clipboard, Microscope, 
   Check, Play, ArrowLeft, Printer, Award, ExternalLink,
-  Search, BookOpen, Compass
+  Search, BookOpen, Compass, Sliders, Database, Terminal,
+  ShieldAlert
 } from 'lucide-react';
 import { SavedReport, UserProgress } from '../types';
 
@@ -26,6 +27,331 @@ export interface ResearchTopic {
     independent: string[];
     dependent: string[];
   };
+}
+
+// ============================================================================
+// ACADEMIC GENERATORS & SIMULATION ENGINES FOR DETAILED RESEARCH CHANNELS
+// ============================================================================
+
+export interface SimOutput {
+  name: string;
+  value: number;
+  unit: string;
+  evaluation: string;
+}
+
+export function getTopicAcademicLiterature(topic: ResearchTopic) {
+  const intro = `The biological investigation of "${topic.title}" represents an active, high-priority frontier in modern molecular biology and bioinformatics. This research addresses the core biological question: "${topic.researchQuestion}". By integrating in-silico screening, molecular simulations, and cellular assay validations, researchers aim to reveal the biochemical feedback systems, genetic drivers, and thermodynamic factors that define sequence behavior in real biological models.`;
+
+  let biochemicalPathway = '';
+  let clinicalRelevance = '';
+  let vocab: { term: string; def: string }[] = [];
+
+  if (topic.category === 'Therapeutics') {
+    biochemicalPathway = `At the sub-cellular level, therapeutic gene modifications depend on the structural configuration of genomic binding components (e.g., Cas9 nucleases, single-guide RNA spacer motifs, or lipid nanoparticle vectors). Alterations in the structural stability of RNA hairpin stems modify the binding equilibrium constant (K_d), altering the threshold of enzymatic cleavage specificity. Over-stabilizing these hybrid duplexes can impair genomic scanning rates, whereas destabilization facilitates mismatch tolerances, triggering unintended somatic mutations at off-target chromosomal sites.`;
+    clinicalRelevance = `The therapeutic transition of molecular gene edits to clinical trials requires limiting off-target mutation frequencies below 1 in 10^5 to comply with clinical guidelines. Utilizing detailed in-silico models to predict and pre-empt off-target binding allows developers to refine guide selections, preserve eukaryotic genomic integrity, and verify that somatic gene corrections do not inadvertently shut down tumor-suppressor genes.`;
+    vocab = [
+      { term: "Kd (Dissociation Constant)", def: "An equilibrium metric quantifying the strength with which a ligand binds to a target protein; lower values represent tighter, more stable molecular interactions." },
+      { term: "Spacer-Target Hybridization", def: "The Watson-Crick pairing of a guide RNA's 20-nucleotide sequence to genomic DNA, where high thermal stability reduces mismatch cleavage errors." },
+      { term: "Double-Strand Break (DSB)", def: "A critical form of DNA damage where both strands of the double helix are cleaved, triggering cellular DNA repair pathways (NHEJ or HDR)." },
+      { term: "Off-Target Mutational Footprint", def: "Unintended genomic substitutions, insertions, or deletions caused by structural mismatch tolerances of editing enzymes at non-target loci." }
+    ];
+  } else if (topic.category === 'Clinical') {
+    biochemicalPathway = `Clinical genetic diagnostics are governed by the biochemical severity of somatic variations or tandem repeats within coding regions. For instance, point mutations in critical receptor tyrosine kinases (such as EGFR, BRAF, or KRAS) trigger continuous ligand-independent signaling, bypassing normal cell-cycle controls. In expansion disorders, such as Huntington's disease, DNA polymerase slippage during replication drives cumulative CAG repeat tract expansion, creating structurally unstable huntingtin proteins that aggregate and induce progressive cell death.`;
+    clinicalRelevance = `Understanding patient-specific sequence variants is essential for personalized medicine and target therapies. For example, lung cancer cohorts with specific Exon 19 deletions respond robustly to small-molecule tyrosine kinase inhibitors (such as Erlotinib), but acquiring secondary mutations (such as T790M) changes the binding pocket configuration, conferring drug resistance. Accurately modeling this resistance helps clinicians design dual-inhibitor regimens.`;
+    vocab = [
+      { term: "Tyrosine Kinase Cascade", def: "A cellular signaling pathway that regulates division and growth; driver mutations in this system cause uncontrolled, ligand-free cell proliferation." },
+      { term: "Capillary Electrophoresis", def: "A high-resolution analytical separation technique used to measure the exact length of PCR-amplified DNA segments (e.g., repeating CAG tracts)." },
+      { term: "Somatic Variant Stratification", def: "The process of categorizing patient cohorts based on unique genetic variations to predict drug response and clinical survival outcomes." },
+      { term: "Genotype-Phenotype Penetrance", def: "The quantitative likelihood that an individual carrying a specific pathogenic mutation will exhibit the physical signs of the disease." }
+    ];
+  } else if (topic.category === 'Environmental') {
+    biochemicalPathway = `Environmental metagenomics relies on examining total extracted environmental DNA (eDNA) from ecological niches, bypassing the limitations of laboratory culturing. The biological capabilities of soil and marine microbial communities are decoded from conserved enzymatic gene clusters, such as the nitrogen-fixing nitrogenase reductase operon (nifH). By extracting eDNA and utilizing high-throughput barcoded sequencing, researchers can reconstruct community metabolic pathways and k-mer distribution profiles.`;
+    clinicalRelevance = `In-depth mapping of soil and marine microbiomes is critical for sustainable agriculture, bio-remediation, and tracking global biochemical cycles. Monitoring changes in the abundance of nitrogen-fixing bacterial communities across seasonal temperature fluctuations helps agronomists optimize organic fertilizer inputs, preserving crop yields while preventing nitrogen runoff and environmental degradation.`;
+    vocab = [
+      { term: "eDNA (Environmental DNA)", def: "Genomic DNA extracted directly from environmental matrices (such as soil or water) containing the genetic footprints of diverse co-existing organisms." },
+      { term: "nifH Metagenomic Marker", def: "A highly conserved gene sequence encoding the nitrogenase iron protein, serving as a diagnostic biomarker for nitrogen-fixing bacteria." },
+      { term: "K-mer Assembly Hash", def: "A computational algorithm that splits raw DNA sequencing reads into short substrings of length k to reconstruct draft environmental genomes." },
+      { term: "Shannon Species Diversity Index", def: "A mathematical indicator that calculates ecological biodiversity, accounting for both species richness and relative abundance." }
+    ];
+  } else if (topic.category === 'Evolutionary') {
+    biochemicalPathway = `Evolutionary genomics analyzes mutations, genetic drift, and natural selection pressures. By comparing orthologous sequences, researchers track evolutionary divergence. The ratio of non-synonymous mutations (which modify protein structure) to synonymous mutations (which do not alter amino acid charge) represents the selective pressure (dN/dS). A dN/dS ratio greater than 1 indicates positive Darwinian selection, which is common in viral spike proteins adapting to human receptors.`;
+    clinicalRelevance = `Tracking viral and bacterial evolution is vital for epidemiology and pandemic preparedness. Using Bayesian molecular clocks to analyze zoonotic sequences lets researchers reconstruct spillover timelines, identify animal hosts, and predict adaptative mutations, enabling proactive development of vaccine candidates and small-molecule therapeutics.`;
+    vocab = [
+      { term: "dN/dS Mutation Ratio", def: "The ratio of non-synonymous substitutions per site to synonymous substitutions per site, used as an indicator of evolutionary selective pressure." },
+      { term: "Zoonotic Viral Spillover", def: "An evolutionary event where a pathogen jumps from an animal host species to establish infection lineages in humans." },
+      { term: "Bayesian Molecular Clock", def: "A statistical method that uses mutation accumulation rates over time to date the divergence of evolutionary branches." },
+      { term: "Consensus Root Sequence", def: "The mathematically reconstructed ancestral sequence that represents the most likely origin of a group of mutated variants." }
+    ];
+  } else {
+    // Computational
+    biochemicalPathway = `Computational biology designs biological state-machines inside cellular hosts. A standard toggle switch, for example, utilizes mutual transcriptional repression (e.g., LacI and TetR), where each protein represses the transcription of the other. The stability of this genetic circuit is governed by transcription rates, translation efficiencies, and protein degradation half-lives, modeled using ordinary differential equations (ODEs).`;
+    clinicalRelevance = `Synthetic gene networks are the foundation of smart drug-delivery cells and engineered CAR-T immunotherapies. Programmed E. coli toggle cells can monitor target biomarkers inside the human intestine, transition to a stable 'memory' state when encountering pathological inflammation, and serve as non-invasive diagnostic indicators.`;
+    vocab = [
+      { term: "Bistable Circuit Topology", def: "A gene regulatory structure that possesses exactly two stable steady states, enabling long-term memory storage inside living cells." },
+      { term: "Mutual Transcriptional Repression", def: "A genetic circuit layout where two repressor proteins actively inhibit the promoter driving each other's synthesis." },
+      { term: "RBS Translation Strength", def: "The efficiency with which ribosomes bind a specific mRNA sequence, determining translation rates independently of transcription." },
+      { term: "Ordinary Differential Equation (ODE)", def: "A mathematical function describing how cellular concentrations change over time based on kinetic rate constants." }
+    ];
+  }
+
+  return {
+    intro,
+    biochemicalPathway,
+    clinicalRelevance,
+    vocab
+  };
+}
+
+export function getTopicLaboratoryProtocol(topic: ResearchTopic) {
+  let reagentList: string[] = [];
+  let steps: string[] = [];
+  let controls: { pos: string; neg: string; method: string } = { pos: '', neg: '', method: '' };
+  let bsl = 'BSL-1 (Standard Biological Containment)';
+
+  if (topic.category === 'Therapeutics') {
+    reagentList = [
+      "Recombinant Purified Cas9 Protein (10 uM stock)",
+      "Synthesized custom sgRNA Oligonucleotides (target spacer and stabilizing hairpins)",
+      "Duplex Hybridization Buffer (10x concentration)",
+      "Lipofectamine 3000 Transfection Reagent Mix",
+      "Human HEK293T Cell Culture Substrate",
+      "Silica-column Genomic DNA Isolation Kits"
+    ];
+    steps = [
+      "Design sgRNA sequences with varying G-C content and sequence mismatch positions using online design portals.",
+      "Thaw human HEK293T target cells and seed onto 96-well culture plates at 70% cell density.",
+      "Assemble Cas9 Ribonucleoprotein (RNP) complexes by incubating Cas9 protein with sgRNA at 1:1.2 molar ratio.",
+      "Introduce the RNP complexes into the cultured human cells using lipid-nanoparticle transfection.",
+      "Harvest and purify genomic DNA 48 hours post-transfection using silica-spin columns.",
+      "Perform high-throughput Next-Generation Sequencing (NGS) to profile indels at on-target and predicted off-target genomic loci."
+    ];
+    controls = {
+      pos: "Verified guide RNA targeting a highly accessible housekeeping gene (GAPDH) to confirm transfection efficiency.",
+      neg: "Non-targeting scrambled sgRNA mock control to measure background genomic mutation rates.",
+      method: "Amplicon Sequencing (Amp-Seq) validated by PCR-based T7 Endonuclease I (T7E1) enzymatic cleavage assays."
+    };
+    bsl = "BSL-2 (Human Cell Line Safety protocols)";
+  } else if (topic.category === 'Clinical') {
+    reagentList = [
+      "Patient Somatic/Germline DNA templates (purified from tissue biopsies or blood samples)",
+      "Custom Forward and Reverse PCR Primers flanking mutation junctions",
+      "High-Fidelity Taq DNA Polymerase Master Mix with dNTPs",
+      "Sanger Sequencing Capillary Electrophoresis Buffer",
+      "Targeted Tyrosine Kinase Inhibitors (Erlotinib/Gefitinib stock solutions)",
+      "Annexin V-FITC Apoptosis Detection Staining Solution"
+    ];
+    steps = [
+      "Amplify target genomic regions (e.g., HTT CAG repeats or EGFR exons) using high-fidelity PCR assays.",
+      "Cleanse PCR amplicons using magnetic beads to remove unused primers and nucleotide dimers.",
+      "Set up cycle sequencing reactions using fluorescent dideoxynucleotides (Sanger termination method).",
+      "Resolve DNA fragments and mutations using high-resolution capillary electrophoresis.",
+      "Expose patient-derived tumor cell lines to varying concentrations of targeted inhibitors.",
+      "Quantify apoptotic cell populations and cell viability rates using fluorescent plate assays or flow cytometry."
+    ];
+    controls = {
+      pos: "DNA control from cell lines with confirmed mutation genotypes (e.g., EGFR T790M positive control).",
+      neg: "Certified healthy genomic DNA representing homozygous wild-type alleles.",
+      method: "Capillary Electrophoresis sequence trace alignment and Chromatogram Peak Area quantification."
+    };
+    bsl = "BSL-2 (Clinical Biosafety Level for patient specimens)";
+  } else if (topic.category === 'Environmental') {
+    reagentList = [
+      "Soil cores collected from agricultural field plots (5.0 gram sample)",
+      "eDNA Cell Lysis Extraction Buffer (SDS and Proteinase K)",
+      "Phenol-Chloroform-Isoamyl Alcohol Purification Mix",
+      "Conserved nifH-targeting metabarcoding PCR primers",
+      "Illumina MiSeq Reagents & Paired-End Flowcells",
+      "Agarose-gel Electrophoresis Molecular Weight standards"
+    ];
+    steps = [
+      "Sieve soil samples to remove plant debris, weigh 1.0 gram, and suspend in enzymatic lysis buffer.",
+      "Perform high-speed bead-beating cell disruption to release bacterial genomic DNA from soil matrices.",
+      "Purify eDNA using phenol-chloroform extraction, followed by ethanol precipitation to remove humic inhibitors.",
+      "Amplify nitrogen-fixing marker genes (nifH) using multiplexed barcoded PCR primers.",
+      "Verify PCR product size using agarose-gel electrophoresis, and quantify library yields with fluorometric dyes.",
+      "Pool barcoded amplicon libraries in equimolar ratios and load onto an Illumina MiSeq sequencer for paired-end sequencing."
+    ];
+    controls = {
+      pos: "Mock bacterial community containing pre-mixed nitrogen-fixing bacterial species (e.g., Azotobacter chroococcum).",
+      neg: "Sterile PCR-grade water processed through the complete extraction, amplification, and sequencing pipeline.",
+      method: "Fluorometric quantification (Qubit) and qPCR absolute copy number profiling."
+    };
+    bsl = "BSL-1 (Standard Soil Microbiology guidelines)";
+  } else if (topic.category === 'Evolutionary') {
+    reagentList = [
+      "Viral-RNA Extraction and Purification Spin Columns",
+      "Reverse Transcriptase Enzyme Mix with Random Hexamers",
+      "Overlapping multiplex PCR primers spanning spike protein regions",
+      "Nextera DNA Flex Library Preparation kits",
+      "High-output Illumina NextSeq Sequencing Flowcells",
+      "Molecular Biology Grade Ultra-pure Water"
+    ];
+    steps = [
+      "Isolate viral RNA from zoonotic saliva or tissue samples using clinical-grade spin columns.",
+      "Perform reverse transcription (RT-PCR) to synthesize stable cDNA templates.",
+      "Conduct multiplex tiling PCR to amplify overlapping regions covering the entire spike gene.",
+      "Perform enzymatic fragmentation and adapter ligation to prepare barcoded sequencing libraries.",
+      "Pool libraries, denature with sodium hydroxide, and load onto the high-throughput sequencing platform.",
+      "Perform high-depth sequencing (at least 100x coverage) and export raw FASTQ sequences to alignment pipelines."
+    ];
+    controls = {
+      pos: "Inactivated Reference SARS-CoV-2 spike gene control RNA standard.",
+      neg: "Nuclease-free water reverse-transcribed alongside target viral samples.",
+      method: "High-accuracy sequence trace depth validation, ensuring at least 100x coverage depth."
+    };
+    bsl = "BSL-2 or BSL-3 (Depending on target viral pathogen isolation risk)";
+  } else {
+    // Computational
+    reagentList = [
+      "E. coli K12 chemically competent host cells",
+      "Target plasmids containing synthetic circuits with GFP/RFP reporter genes",
+      "IPTG Inducer stock solution (100 mM)",
+      "Anhydrotetracycline (aTc) Inducer stock solution (100 ug/mL)",
+      "Luria-Bertani (LB) Agar plates containing selection antibiotics",
+      "Fluorescence Microplate Reader well plates"
+    ];
+    steps = [
+      "Thaw competent E. coli cells, add 10 ng of synthetic plasmid, and incubate on ice for 30 minutes.",
+      "Heat-shock the cells at 42°C for exactly 45 seconds to facilitate plasmid entry, then chill on ice.",
+      "Recover transformed bacteria in SOC medium at 37°C for 1 hour under shaking.",
+      "Plate cultures onto selective agar plates containing ampicillin and incubate overnight.",
+      "Inoculate single colonies into liquid selective media, grow to log phase, and dispense onto microplates.",
+      "Add chemical inducers (IPTG or aTc) and measure fluorescent reporter ratios (GFP/RFP) over a 24-hour cycle."
+    ];
+    controls = {
+      pos: "Plasmid-expressing constitutive GFP to verify translation and fluorescence baseline limits.",
+      neg: "Untransformed host cells grown in non-selective Luria-Bertani media.",
+      method: "Fluorescence spectrophotometry normalized against optical density at 600nm (OD600)."
+    };
+    bsl = "BSL-1 (Recombinant Non-pathogenic E. coli standard)";
+  }
+
+  return {
+    reagentList,
+    steps,
+    controls,
+    bsl
+  };
+}
+
+export function runVirtualSimulation(
+  topic: ResearchTopic,
+  independentVar: string,
+  inputValue: number, // 0 to 100
+  secondaryFactor: number // 0 to 100
+): SimOutput[] {
+  const outputs: SimOutput[] = [];
+  const depNames = topic.variables.dependent;
+
+  if (topic.id === "topic-1") {
+    if (independentVar === "sgRNA Hairpin G-C Content") {
+      const offTargetVal = Math.max(0.5, 42 - (inputValue * 0.42) - (secondaryFactor * 0.12));
+      const onTargetVal = Math.max(5, inputValue < 72 ? (35 + (inputValue * 0.55) + (secondaryFactor * 0.12)) : (75 - (inputValue - 72) * 2.2));
+      const toxicity = Math.max(2, (secondaryFactor * 0.7) + (inputValue * 0.1));
+      
+      outputs.push({ name: depNames[0], value: parseFloat(offTargetVal.toFixed(2)), unit: "% Cleavage Ratio", evaluation: offTargetVal > 15 ? "High Hazard (Mismatch Cleavage)" : "Safe / Clinical Grade" });
+      outputs.push({ name: depNames[1], value: parseFloat(toxicity.toFixed(2)), unit: "Hazard Index (0-100)", evaluation: toxicity > 60 ? "Critical Toxicity Detected" : "Low Toxicity / Tolerable" });
+      outputs.push({ name: depNames[2], value: parseFloat(onTargetVal.toFixed(2)), unit: "% Edit Yield", evaluation: onTargetVal > 70 ? "Excellent On-Target Editing" : "Insufficient Editing Yield" });
+    } else if (independentVar === "Cas9 Concentration") {
+      const offTargetVal = Math.min(95, 4 + (inputValue * 0.88) - (secondaryFactor * 0.08));
+      const onTargetVal = Math.min(98, 8 + (inputValue * 0.94));
+      const toxicity = Math.min(100, 1 + (inputValue * 0.92) + (secondaryFactor * 0.12));
+      
+      outputs.push({ name: depNames[0], value: parseFloat(offTargetVal.toFixed(2)), unit: "% Cleavage Ratio", evaluation: offTargetVal > 25 ? "Significant Cleavage Error" : "Acceptable Threshold" });
+      outputs.push({ name: depNames[1], value: parseFloat(toxicity.toFixed(2)), unit: "Hazard Index (0-100)", evaluation: toxicity > 50 ? "High Cellular Stress" : "Minimal Cell Senescence" });
+      outputs.push({ name: depNames[2], value: parseFloat(onTargetVal.toFixed(2)), unit: "% Edit Yield", evaluation: onTargetVal > 75 ? "Optimal On-Target Editing" : "Poor/Insufficient Editing" });
+    } else {
+      const offTargetVal = Math.max(0.1, 78 - (inputValue * 11.5) + (secondaryFactor * 0.15));
+      const onTargetVal = Math.max(10, 82 - (inputValue * 2.2));
+      const toxicity = Math.max(1, 38 - (inputValue * 3.5));
+      
+      outputs.push({ name: depNames[0], value: parseFloat(offTargetVal.toFixed(2)), unit: "% Cleavage Ratio", evaluation: offTargetVal > 20 ? "High Cleavage Error" : "Target Highly Specific" });
+      outputs.push({ name: depNames[1], value: parseFloat(toxicity.toFixed(2)), unit: "Hazard Index (0-100)", evaluation: toxicity > 30 ? "Moderate Stress" : "Healthy" });
+      outputs.push({ name: depNames[2], value: parseFloat(onTargetVal.toFixed(2)), unit: "% Edit Yield", evaluation: onTargetVal > 60 ? "Normal Editing Yield" : "Cleavage Inhibited" });
+    }
+  } else if (topic.id === "topic-2") {
+    if (independentVar === "Inhibitor Dosage (nM)") {
+      const isResistant = secondaryFactor > 50;
+      const factor = isResistant ? 5.2 : 1.0;
+      
+      const phosphoVal = Math.max(2, 98 - (inputValue * 0.96 / factor));
+      const apoptosisVal = Math.min(95, 3 + (inputValue * 0.94 / factor));
+      const tumorVal = Math.max(0.1, 10 - (inputValue * 0.10 / factor));
+      
+      outputs.push({ name: depNames[0], value: parseFloat(phosphoVal.toFixed(2)), unit: "% Phosphorylation", evaluation: phosphoVal > 40 ? "Kinase Active (Cancer Survives)" : "Kinase Inhibited (Success)" });
+      outputs.push({ name: depNames[1], value: parseFloat(apoptosisVal.toFixed(2)), unit: "% Apoptotic Cells", evaluation: apoptosisVal > 50 ? "Massive Tumor Cell Death" : "Tumor Resists Apoptosis" });
+      outputs.push({ name: depNames[2], value: parseFloat(tumorVal.toFixed(2)), unit: "cm³ Tumor Volume", evaluation: tumorVal > 5 ? "Rapid Proliferation" : "Tumor Regression" });
+    } else {
+      const baseDose = secondaryFactor * 0.8;
+      const phosphoVal = Math.max(4, 92 - (inputValue * 0.35) - (baseDose * 0.45));
+      const apoptosisVal = Math.min(92, 4 + (inputValue * 0.42) + (baseDose * 0.38));
+      const tumorVal = Math.max(0.2, 9.5 - (inputValue * 0.09) - (baseDose * 0.04));
+      
+      outputs.push({ name: depNames[0], value: parseFloat(phosphoVal.toFixed(2)), unit: "% Phosphorylation", evaluation: phosphoVal > 50 ? "Active Proliferation" : "Suppressed Proliferation" });
+      outputs.push({ name: depNames[1], value: parseFloat(apoptosisVal.toFixed(2)), unit: "% Apoptotic Cells", evaluation: apoptosisVal > 40 ? "Significant Apoptosis" : "Poor Response" });
+      outputs.push({ name: depNames[2], value: parseFloat(tumorVal.toFixed(2)), unit: "cm³ Tumor Volume", evaluation: tumorVal > 6 ? "Expanding" : "Contained" });
+    }
+  } else if (topic.id === "topic-4") {
+    if (independentVar === "Initial CAG Repeat Count") {
+      const repeats = Math.floor(30 + (inputValue * 0.9));
+      const expansion = Math.max(1, (repeats - 35) * 1.4 + (secondaryFactor * 0.08));
+      const aggregation = Math.min(98, Math.max(2, (repeats - 37) * 2.1));
+      const viability = Math.max(3, 98 - (repeats - 35) * 1.15);
+      
+      outputs.push({ name: depNames[0], value: parseFloat(expansion.toFixed(2)), unit: "% Somatic Expansion Rate", evaluation: repeats > 38 ? "Pathogenic Expansions Active" : "Stable Repeat Length" });
+      outputs.push({ name: depNames[1], value: parseFloat(aggregation.toFixed(2)), unit: "% Aggregate Volume", evaluation: repeats > 39 ? "Intracellular Fibril Aggregates" : "Monomeric / Soluble HTT" });
+      outputs.push({ name: depNames[2], value: parseFloat(viability.toFixed(2)), unit: "% Neuronal Viability", evaluation: viability < 60 ? "Severe Neurodegeneration" : "Healthy Neuronal Viability" });
+    } else {
+      const expansion = Math.max(0.1, 32 - (inputValue * 0.28) - (secondaryFactor * 0.08));
+      const aggregation = Math.max(4, 72 - (inputValue * 0.45));
+      const viability = Math.min(98, 48 + (inputValue * 0.38) + (secondaryFactor * 0.12));
+      
+      outputs.push({ name: depNames[0], value: parseFloat(expansion.toFixed(2)), unit: "% Somatic Expansion Rate", evaluation: "Stabilized / Contraction Locus" });
+      outputs.push({ name: depNames[1], value: parseFloat(aggregation.toFixed(2)), unit: "% Aggregate Volume", evaluation: "Reduced Insoluble Fibrils" });
+      outputs.push({ name: depNames[2], value: parseFloat(viability.toFixed(2)), unit: "% Neuronal Viability", evaluation: "Protected Lines" });
+    }
+  } else if (topic.id === "topic-6") {
+    const isIPTG = independentVar === "IPTG Inducer Concentration (uM)";
+    const retentionVal = isIPTG ? Math.min(72, 2 + (inputValue * 0.68)) : Math.min(72, 4 + (inputValue * 0.48));
+    const fluorVal = isIPTG ? Math.min(25, 0.1 + (inputValue * 0.24)) : Math.min(25, 1 + (inputValue * 0.14));
+    const sensitivity = Math.max(0.1, 8.2 - (inputValue * 0.07));
+    
+    outputs.push({ name: depNames[0], value: parseFloat(retentionVal.toFixed(2)), unit: "Hours State Stability", evaluation: retentionVal > 24 ? "Bistable Circuit Memory Retained" : "Transient State Leakage" });
+    outputs.push({ name: depNames[1], value: parseFloat(fluorVal.toFixed(2)), unit: "GFP/RFP Ratio", evaluation: fluorVal > 10 ? "GFP High-State Activator" : "RFP Default State Activator" });
+    outputs.push({ name: depNames[2], value: parseFloat(sensitivity.toFixed(2)), unit: "uM Inducer Threshold", evaluation: "Optimal Toggle Sensitivity" });
+  } else {
+    // General non-linear responsive simulation model for other topics
+    const baseValue = inputValue;
+    const cofactorValue = secondaryFactor;
+    
+    const val1 = Math.max(0, parseFloat((Math.sin(baseValue / 12) * 22 + 48 + cofactorValue * 0.22).toFixed(2)));
+    const val2 = Math.min(100, Math.max(0, parseFloat((100 - baseValue * 0.75 + cofactorValue * 0.35).toFixed(2))));
+    const val3 = Math.max(0, parseFloat((baseValue * 0.88 + cofactorValue * 0.12).toFixed(2)));
+    
+    outputs.push({
+      name: depNames[0] || "Target Expression Yield",
+      value: val1,
+      unit: topic.category === 'Environmental' ? "Biomass Score" : topic.category === 'Clinical' ? "pg/mL Plasma" : "% Conversion Rate",
+      evaluation: val1 > 60 ? "Active / Significant Signal" : "Low / Latent Pathway Activity"
+    });
+    
+    outputs.push({
+      name: depNames[1] || "Cell/Ecological Stability",
+      value: val2,
+      unit: topic.category === 'Clinical' ? "Percent (%)" : "Biodiversity Index (H')",
+      evaluation: val2 > 70 ? "Stable / Normal Vitality" : "Stressed / Compromised System"
+    });
+    
+    outputs.push({
+      name: depNames[2] || "Amplification Yield",
+      value: val3,
+      unit: "RFU Detection Units",
+      evaluation: val3 > 50 ? "Clear Analytical Target Peaks" : "Trace Levels / Noise Limit"
+    });
+  }
+
+  return outputs;
 }
 
 export const RESEARCH_TOPICS: ResearchTopic[] = [
@@ -491,6 +817,16 @@ export default function ResearchSimulations({ progress, onSaveReport, onComplete
   const [hypothesisLog, setHypothesisLog] = useState<string[]>([]);
   const [hypothesisSuccess, setHypothesisSuccess] = useState<string | null>(null);
 
+  // Expanded Multi-Page & Experiment System States
+  const [topicModalTab, setTopicModalTab] = useState<'literature' | 'protocol' | 'experiment'>('literature');
+  const [expIndValue, setExpIndValue] = useState<number>(50);
+  const [expCoFactor, setExpCoFactor] = useState<number>(37);
+  const [expRunning, setExpRunning] = useState<boolean>(false);
+  const [expProgress, setExpProgress] = useState<number>(0);
+  const [expConsole, setExpConsole] = useState<string[]>([]);
+  const [expResults, setExpResults] = useState<SimOutput[] | null>(null);
+  const [expSaveSuccess, setExpSaveSuccess] = useState<boolean>(false);
+
   const handleSaveSimulationReport = (simId: string, customReport: SavedReport) => {
     if (onSaveReport) {
       onSaveReport(customReport);
@@ -865,6 +1201,64 @@ END OF ABSTRACT BRIEF
     document.body.removeChild(link);
   };
 
+  const handleSelectTopic = (topic: ResearchTopic) => {
+    setSelectedTopic(topic);
+    setHypothesisInd(topic.variables.independent[0] || '');
+    setHypothesisDep(topic.variables.dependent[0] || '');
+    setHypothesisRationale('');
+    setHypothesisSuccess(null);
+    setTopicModalTab('literature');
+    setExpIndValue(50);
+    setExpCoFactor(37);
+    setExpProgress(0);
+    setExpRunning(false);
+    setExpResults(null);
+    setExpConsole([]);
+    setExpSaveSuccess(false);
+  };
+
+  const handleRunVirtualExperiment = () => {
+    if (!selectedTopic) return;
+    setExpRunning(true);
+    setExpProgress(0);
+    setExpResults(null);
+    setExpSaveSuccess(false);
+    
+    const indVar = hypothesisInd || selectedTopic.variables.independent[0];
+    const depVar = hypothesisDep || selectedTopic.variables.dependent[0];
+
+    const logs: string[] = [
+      `[SYS-INIT]: Powering genomic hybridization sensors and thermocycling arrays...`,
+      `[SYS-READY]: Reagents loaded. Ready to run virtual trial for: "${selectedTopic.title}".`
+    ];
+    setExpConsole(logs);
+
+    let progressLocal = 0;
+    const interval = setInterval(() => {
+      progressLocal += 4;
+      if (progressLocal > 100) progressLocal = 100;
+      setExpProgress(progressLocal);
+
+      if (progressLocal === 20) {
+        setExpConsole(prev => [...prev, `[REAGENT-ASSAY]: Injecting independent variable: [${indVar}] set to level: ${expIndValue}%`]);
+      } else if (progressLocal === 40) {
+        setExpConsole(prev => [...prev, `[COFACTOR-ASSAY]: Regulating secondary reaction factor to baseline level: ${expCoFactor}%`]);
+      } else if (progressLocal === 60) {
+        setExpConsole(prev => [...prev, `[HYBRIDIZATION]: Thermal sequence pairing initiated... Analyzing primer binding kinetics.`]);
+      } else if (progressLocal === 80) {
+        setExpConsole(prev => [...prev, `[GENOMIC-SCAN]: Extracting diagnostic signal traces. Reading fluorescent output index...`]);
+      } else if (progressLocal === 96) {
+        setExpConsole(prev => [...prev, `[COMPILING]: Running predictive structural calculations for: [${depVar}]...`]);
+      } else if (progressLocal >= 100) {
+        clearInterval(interval);
+        setExpRunning(false);
+        const results = runVirtualSimulation(selectedTopic, indVar, expIndValue, expCoFactor);
+        setExpResults(results);
+        setExpConsole(prev => [...prev, `[SUCCESS]: Multi-variable assay completed. Quantified metrics resolved successfully. Saved in central RAM.`]);
+      }
+    }, 20);
+  };
+
   return (
     <div className="space-y-8 animate-fade-in" id="research-simulation-page">
       
@@ -1097,13 +1491,7 @@ END OF ABSTRACT BRIEF
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedTopic(topic);
-                          setHypothesisInd('');
-                          setHypothesisDep('');
-                          setHypothesisRationale('');
-                          setHypothesisSuccess(null);
-                        }}
+                        onClick={() => handleSelectTopic(topic)}
                         className={`w-full py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 cursor-pointer border ${
                           isLogged 
                             ? 'bg-emerald-50 border-emerald-100 text-emerald-800 hover:bg-emerald-100' 
@@ -1145,189 +1533,556 @@ END OF ABSTRACT BRIEF
         </div>
 
         {/* RESEARCH TOPIC DETAIL MODAL OVERLAY */}
-        {selectedTopic && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in" id="topic-detail-modal">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col focus:outline-none animate-scale-in" id="topic-detail-card">
-              
-              {/* Header Banner */}
-              <div className={`p-6 border-b border-slate-100 flex items-start justify-between relative ${
-                selectedTopic.category === 'Therapeutics' ? 'bg-purple-50/20' :
-                selectedTopic.category === 'Clinical' ? 'bg-rose-50/20' :
-                selectedTopic.category === 'Environmental' ? 'bg-emerald-50/20' :
-                selectedTopic.category === 'Evolutionary' ? 'bg-amber-50/20' :
-                'bg-sky-50/20'
-              }`}>
-                <div className="space-y-1 max-w-[85%]">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${
-                      selectedTopic.category === 'Therapeutics' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                      selectedTopic.category === 'Clinical' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                      selectedTopic.category === 'Environmental' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      selectedTopic.category === 'Evolutionary' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                      'bg-sky-50 text-sky-700 border-sky-200'
-                    }`}>
-                      {selectedTopic.category} Field Study
-                    </span>
-                    <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">
-                      {selectedTopic.difficulty} Level
-                    </span>
-                  </div>
-                  <h3 className="text-base font-black text-slate-900 leading-snug">
-                    {selectedTopic.title}
-                  </h3>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedTopic(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-all shrink-0"
-                  aria-label="Close"
-                >
-                  <span className="text-xl font-bold font-mono">×</span>
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-6 space-y-6 text-xs text-slate-600 leading-relaxed overflow-y-auto">
-                {/* Detailed Background */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">1. Research Area & Background</span>
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium leading-relaxed text-slate-700">
-                    {selectedTopic.detailedBackground}
-                  </div>
-                </div>
-
-                {/* Databases and References */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">2. Primary Target Question</span>
-                    <div className="p-3 bg-teal-50/20 border border-teal-100 text-teal-800 rounded-xl font-bold flex items-start gap-2">
-                      <BookOpen className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                      <span>"{selectedTopic.researchQuestion}"</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">3. Suggested Reference Registries</span>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {selectedTopic.suggestedDatabases.map((db, idx) => (
-                        <span key={idx} className="bg-slate-100 text-slate-700 font-mono font-bold px-2.5 py-1 rounded-md border border-slate-200 flex items-center gap-1 text-[10px]">
-                          <Dna className="w-3 h-3 text-slate-500" /> {db}
+        {selectedTopic && (() => {
+          const lit = getTopicAcademicLiterature(selectedTopic);
+          const prot = getTopicLaboratoryProtocol(selectedTopic);
+          const isLogged = hypothesisLog.includes(selectedTopic.id);
+          
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in" id="topic-detail-modal">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col focus:outline-none animate-scale-in" id="topic-detail-card">
+                
+                {/* Header Banner */}
+                <div className={`p-5 border-b border-slate-100 flex flex-col relative shrink-0 ${
+                  selectedTopic.category === 'Therapeutics' ? 'bg-purple-50/20' :
+                  selectedTopic.category === 'Clinical' ? 'bg-rose-50/20' :
+                  selectedTopic.category === 'Environmental' ? 'bg-emerald-50/20' :
+                  selectedTopic.category === 'Evolutionary' ? 'bg-amber-50/20' :
+                  'bg-sky-50/20'
+                }`}>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1 max-w-[85%]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${
+                          selectedTopic.category === 'Therapeutics' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          selectedTopic.category === 'Clinical' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                          selectedTopic.category === 'Environmental' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          selectedTopic.category === 'Evolutionary' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          'bg-sky-50 text-sky-700 border-sky-200'
+                        }`}>
+                          {selectedTopic.category} Field Study
                         </span>
-                      ))}
+                        <span className="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold">
+                          {selectedTopic.difficulty} Level
+                        </span>
+                        {isLogged && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 animate-fade-in shadow-3xs">
+                            <Check className="w-3 h-3 stroke-[3]" /> Hypothesis Logged
+                          </span>
+                        )}
+                        {expResults && (
+                          <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 animate-fade-in shadow-3xs">
+                            <Activity className="w-3 h-3" /> Assay Simulated
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-black text-slate-900 leading-snug pt-1">
+                        {selectedTopic.title}
+                      </h3>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTopic(null)}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-150 rounded-full cursor-pointer transition-all shrink-0"
+                      aria-label="Close"
+                    >
+                      <span className="text-xl font-bold font-mono">×</span>
+                    </button>
+                  </div>
+
+                  {/* TABS SELECTOR PANEL */}
+                  <div className="flex border-b border-slate-200 mt-4 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setTopicModalTab('literature')}
+                      className={`px-4 py-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+                        topicModalTab === 'literature' 
+                          ? 'border-teal-600 text-teal-700 font-extrabold bg-slate-50/50' 
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      1. Literature Review
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTopicModalTab('protocol')}
+                      className={`px-4 py-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+                        topicModalTab === 'protocol' 
+                          ? 'border-teal-600 text-teal-700 font-extrabold bg-slate-50/50' 
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      2. Protocols & Methodology
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTopicModalTab('experiment')}
+                      className={`px-4 py-2 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 cursor-pointer ${
+                        topicModalTab === 'experiment' 
+                          ? 'border-teal-600 text-teal-700 font-extrabold bg-slate-50/50' 
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
+                      3. Interactive Experiment
+                    </button>
                   </div>
                 </div>
 
-                {/* Interactive Hypothesis Builder */}
-                <div className="p-5 border border-teal-150 bg-teal-50/10 rounded-2xl space-y-4">
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-                      <Sparkles className="w-4 h-4 text-teal-600" />
-                      Interactive Hypothesis Formulator
-                    </h4>
-                    <p className="text-[11px] text-slate-500 leading-normal font-medium">
-                      Configure the experimental variables to generate your biological research thesis draft.
-                    </p>
-                  </div>
+                {/* Content Container (Scrollable) */}
+                <div className="p-6 space-y-6 text-xs text-slate-600 leading-relaxed overflow-y-auto flex-1">
+                  
+                  {/* ==========================================================
+                      TAB 1: LITERATURE REVIEW & DETAILED ACADEMIC PAPER
+                      ========================================================== */}
+                  {topicModalTab === 'literature' && (
+                    <div className="space-y-6 animate-fade-in">
+                      
+                      {/* Literature Section 1 */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Academic Intro & Hypothesis Space</span>
+                        <div className="p-4 bg-slate-50 border-l-4 border-teal-500 rounded-r-xl font-medium leading-relaxed text-slate-700 shadow-3xs text-[11.5px]">
+                          {lit.intro}
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Independent Variable Selection */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Independent Variable (Manipulated):</label>
-                      <select
-                        value={hypothesisInd}
-                        onChange={(e) => setHypothesisInd(e.target.value)}
-                        className="w-full bg-white text-slate-800 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-bold px-3 py-2 focus:outline-none transition-all shadow-3xs"
-                      >
-                        <option value="">-- Choose Variable --</option>
-                        {selectedTopic.variables.independent.map((v, i) => (
-                          <option key={i} value={v}>{v}</option>
-                        ))}
-                      </select>
-                    </div>
+                      {/* Literature Section 2 */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Biochemical Cascade & Signaling Pathway</span>
+                        <div className="p-4 bg-white border border-slate-200 rounded-xl leading-relaxed text-slate-600 shadow-3xs space-y-2">
+                          <p className="font-medium text-[11px] text-slate-700">
+                            {lit.biochemicalPathway}
+                          </p>
+                          <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-[10px] text-teal-700 font-bold">
+                            <Dna className="w-4 h-4 shrink-0" />
+                            <span>System configuration verified using 3D structural models from PDB data files.</span>
+                          </div>
+                        </div>
+                      </div>
 
-                    {/* Dependent Variable Selection */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Dependent Variable (Observed):</label>
-                      <select
-                        value={hypothesisDep}
-                        onChange={(e) => setHypothesisDep(e.target.value)}
-                        className="w-full bg-white text-slate-800 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-bold px-3 py-2 focus:outline-none transition-all shadow-3xs"
-                      >
-                        <option value="">-- Choose Variable --</option>
-                        {selectedTopic.variables.dependent.map((v, i) => (
-                          <option key={i} value={v}>{v}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                      {/* Literature Section 3 */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Clinical & Translational Relevance</span>
+                        <p className="p-4 bg-teal-50/10 border border-teal-100 text-slate-700 rounded-xl font-medium leading-relaxed text-[11px]">
+                          {lit.clinicalRelevance}
+                        </p>
+                      </div>
 
-                  {/* Scientific Rationale input */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Scientific Rationale (Predictive Justification):</label>
-                    <textarea
-                      rows={3}
-                      value={hypothesisRationale}
-                      onChange={(e) => setHypothesisRationale(e.target.value)}
-                      placeholder="Explain the biological or biochemical mechanism driving your hypothesis (e.g., 'Increasing Cas9 concentration will escalate off-target cleavage...')"
-                      className="w-full bg-white text-slate-800 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-bold p-3 focus:outline-none transition-all shadow-3xs leading-relaxed"
-                    />
-                  </div>
+                      {/* Literature Section 4: Key Vocabulary Glossary */}
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Key Academic Terminology</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {lit.vocab.map((v, i) => (
+                            <div key={i} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                              <h5 className="font-extrabold text-slate-800 text-[11px] flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                {v.term}
+                              </h5>
+                              <p className="text-[10.5px] text-slate-500 leading-normal font-medium">
+                                {v.def}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-                  {/* Feedback & Actions */}
-                  {hypothesisSuccess && (
-                    <div className={`p-3.5 rounded-xl text-xs font-bold flex items-start gap-2 ${
-                      hypothesisSuccess.startsWith('Error') 
-                        ? 'bg-rose-50 border border-rose-150 text-rose-800' 
-                        : 'bg-emerald-50 border border-emerald-150 text-emerald-800'
-                    }`}>
-                      {hypothesisSuccess.startsWith('Error') ? (
-                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      )}
-                      <div>{hypothesisSuccess}</div>
+                      {/* Recommended Registries */}
+                      <div className="space-y-2 pt-2">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Primary NCBI & Reference Registries</span>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTopic.suggestedDatabases.map((db, idx) => (
+                            <span key={idx} className="bg-slate-100 text-slate-700 font-mono font-bold px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 text-[10px]">
+                              <Database className="w-3.5 h-3.5 text-slate-500" /> {db}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
                     </div>
                   )}
 
-                  <div className="flex gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleValidateHypothesis}
-                      className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-3xs transition-all animate-pulse"
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      Validate & Log Hypothesis
-                    </button>
+                  {/* ==========================================================
+                      TAB 2: LABORATORY METHODOLOGY & PROTOCOLS
+                      ========================================================== */}
+                  {topicModalTab === 'protocol' && (
+                    <div className="space-y-6 animate-fade-in">
+                      
+                      {/* BSL Banner */}
+                      <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl flex items-start gap-3">
+                        <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <h4 className="font-extrabold text-xs">Required Safety Standard: {prot.bsl}</h4>
+                          <p className="text-[10.5px] text-amber-700 font-medium">
+                            All research actions must be conducted under full laboratory containment, utilizing autoclaves, biological hoods, and standard aseptic isolation procedures.
+                          </p>
+                        </div>
+                      </div>
 
-                    {hypothesisSuccess?.startsWith('Success') && (
-                      <button
-                        type="button"
-                        onClick={handleDownloadBrief}
-                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-3xs transition-all animate-fade-in"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Export Brief
-                      </button>
-                    )}
+                      {/* Reagents list */}
+                      <div className="space-y-2.5">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Required Chemical Reagents & Molecular Buffers</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {prot.reagentList.map((r, i) => (
+                            <div key={i} className="p-2.5 bg-slate-50 border border-slate-150 rounded-lg flex items-center gap-2 text-slate-700 font-medium">
+                              <FlaskConical className="w-4 h-4 text-teal-600 shrink-0" />
+                              <span className="text-[10.5px]">{r}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Methodology Workflow Steps */}
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Experimental Assay Timeline & Execution</span>
+                        <div className="space-y-2.5 border-l-2 border-slate-100 pl-4 ml-2">
+                          {prot.steps.map((s, i) => (
+                            <div key={i} className="relative space-y-1">
+                              <span className="absolute -left-7.5 top-0 w-5 h-5 bg-teal-600 text-white rounded-full flex items-center justify-center font-mono font-bold text-[9px] border-2 border-white">
+                                {i + 1}
+                              </span>
+                              <h5 className="font-extrabold text-slate-800 text-[11px] pt-0.5">
+                                Step {i + 1}: Assay Phase
+                              </h5>
+                              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                                {s}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quality Controls */}
+                      <div className="space-y-3 pt-2">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">Biological Calibration & Quality Controls</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-1">
+                            <h6 className="font-extrabold text-[10.5px] text-emerald-800 uppercase tracking-wider">Positive Control</h6>
+                            <p className="text-[10px] text-slate-600 font-medium leading-relaxed">{prot.controls.pos}</p>
+                          </div>
+                          <div className="p-3 bg-rose-50/30 border border-rose-100 rounded-xl space-y-1">
+                            <h6 className="font-extrabold text-[10.5px] text-rose-800 uppercase tracking-wider">Negative Control</h6>
+                            <p className="text-[10px] text-slate-600 font-medium leading-relaxed">{prot.controls.neg}</p>
+                          </div>
+                          <div className="p-3 bg-teal-50/30 border border-teal-100 rounded-xl space-y-1">
+                            <h6 className="font-extrabold text-[10.5px] text-teal-800 uppercase tracking-wider">Verification Assay</h6>
+                            <p className="text-[10px] text-slate-600 font-medium leading-relaxed">{prot.controls.method}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* ==========================================================
+                      TAB 3: INTERACTIVE LAB SIMULATION ENGINE
+                      ========================================================== */}
+                  {topicModalTab === 'experiment' && (
+                    <div className="space-y-6 animate-fade-in">
+                      
+                      {/* Step A: Hypothesis Builder */}
+                      <div className="p-5 border border-teal-150 bg-teal-50/10 rounded-2xl space-y-4">
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                            <Sparkles className="w-4 h-4 text-teal-600 animate-spin" style={{ animationDuration: '6s' }} />
+                            A. Formulate Scientific Hypothesis
+                          </h4>
+                          <p className="text-[11px] text-slate-500 leading-normal font-medium">
+                            Set your experimental variables and outline your rationale to authorize lab instrument calibration.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Independent Variable (Manipulated):</label>
+                            <select
+                              value={hypothesisInd}
+                              onChange={(e) => setHypothesisInd(e.target.value)}
+                              className="w-full bg-white text-slate-800 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-bold px-3 py-2 focus:outline-none shadow-3xs"
+                            >
+                              {selectedTopic.variables.independent.map((v, i) => (
+                                <option key={i} value={v}>{v}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Dependent Variable (Observed):</label>
+                            <select
+                              value={hypothesisDep}
+                              onChange={(e) => setHypothesisDep(e.target.value)}
+                              className="w-full bg-white text-slate-800 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-bold px-3 py-2 focus:outline-none shadow-3xs"
+                            >
+                              {selectedTopic.variables.dependent.map((v, i) => (
+                                <option key={i} value={v}>{v}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block">Scientific Justification & Rationale:</label>
+                          <textarea
+                            rows={2}
+                            value={hypothesisRationale}
+                            onChange={(e) => setHypothesisRationale(e.target.value)}
+                            placeholder="State the molecular or mechanical reaction backing your hypothesis (minimum 15 characters)..."
+                            className="w-full bg-white text-slate-800 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 rounded-lg text-xs font-medium p-3 focus:outline-none shadow-3xs leading-relaxed"
+                          />
+                        </div>
+
+                        {hypothesisSuccess && (
+                          <div className={`p-3 rounded-xl text-xs font-bold flex items-start gap-2 ${
+                            hypothesisSuccess.startsWith('Error') 
+                              ? 'bg-rose-50 border border-rose-150 text-rose-800' 
+                              : 'bg-emerald-50 border border-emerald-150 text-emerald-800'
+                          }`}>
+                            {hypothesisSuccess.startsWith('Error') ? (
+                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                            )}
+                            <div className="text-[10.5px]">{hypothesisSuccess}</div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleValidateHypothesis}
+                            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-[11px] rounded-lg cursor-pointer transition-all shadow-3xs flex items-center gap-1.5"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                            Validate & Log Hypothesis
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={handleDownloadBrief}
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold text-[11px] rounded-lg cursor-pointer transition-all flex items-center gap-1"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Export Text Brief
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Step B: Lab Instrument Calibration & Execution */}
+                      <div className="p-5 border border-slate-200 bg-slate-50 rounded-2xl space-y-4">
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                            <Sliders className="w-4 h-4 text-slate-600" />
+                            B. Virtual Calibration Controls
+                          </h4>
+                          <p className="text-[11px] text-slate-500 leading-normal font-medium">
+                            Set physical factors to observe the quantitative effects in-silico.
+                          </p>
+                        </div>
+
+                        {!isLogged ? (
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-center text-amber-800 font-bold text-[11px] space-y-1">
+                            <ShieldAlert className="w-6 h-6 text-amber-600 mx-auto" />
+                            <p>Hypothesis Authorization Required</p>
+                            <p className="text-[10px] text-amber-600 font-medium">Please construct, validate, and log your hypothesis first to unlock the clinical simulator controls.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-5">
+                            
+                            {/* Sliders Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                              {/* Independent factor level slider */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                                    Independent Concentration:
+                                  </label>
+                                  <span className="text-xs font-mono font-bold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">
+                                    {expIndValue}%
+                                  </span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="5"
+                                  max="100"
+                                  value={expIndValue}
+                                  onChange={(e) => setExpIndValue(parseInt(e.target.value))}
+                                  disabled={expRunning}
+                                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 disabled:opacity-50"
+                                />
+                                <span className="text-[10px] text-slate-400 block font-medium leading-snug">
+                                  Calibrates the chemical dosage or mutation length introduced into the assay.
+                                </span>
+                              </div>
+
+                              {/* Secondary Co-factor Level Slider */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                                    Reaction Temperature / Co-factor:
+                                  </label>
+                                  <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                    {expCoFactor}°C / Level
+                                  </span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="10"
+                                  max="75"
+                                  value={expCoFactor}
+                                  disabled={expRunning}
+                                  onChange={(e) => setExpCoFactor(parseInt(e.target.value))}
+                                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-600 disabled:opacity-50"
+                                />
+                                <span className="text-[10px] text-slate-400 block font-medium leading-snug">
+                                  Regulates background heat stability or supplementary enzyme buffer levels.
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Run Assay Button */}
+                            <button
+                              type="button"
+                              onClick={handleRunVirtualExperiment}
+                              disabled={expRunning}
+                              className={`w-full py-2.5 rounded-xl font-extrabold text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                                expRunning 
+                                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                                  : 'bg-teal-600 hover:bg-teal-700 text-white hover:shadow-lg'
+                              }`}
+                            >
+                              <FlaskConical className="w-4 h-4 text-teal-200 animate-pulse" />
+                              {expRunning ? 'Running Virtual Assay Trial...' : 'Run Simulated Lab Trial'}
+                            </button>
+
+                            {/* Console output display during run */}
+                            {expRunning && (
+                              <div className="space-y-2 animate-fade-in">
+                                <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono font-bold">
+                                  <span className="flex items-center gap-1"><Terminal className="w-3.5 h-3.5 text-emerald-600" /> VIRTUAL CONSOLE STATUS</span>
+                                  <span>{expProgress}%</span>
+                                </div>
+                                
+                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                  <div className="bg-teal-600 h-full transition-all duration-100" style={{ width: `${expProgress}%` }}></div>
+                                </div>
+
+                                <div className="bg-slate-950 rounded-xl p-3 border border-slate-800 font-mono text-emerald-400 text-[10px] h-28 overflow-y-auto space-y-1.5 select-all leading-normal">
+                                  {expConsole.map((line, idx) => (
+                                    <div key={idx} className="flex gap-1.5">
+                                      <span className="text-slate-500">❯</span>
+                                      <span>{line}</span>
+                                    </div>
+                                  ))}
+                                  <span className="inline-block w-1.5 h-3.5 bg-emerald-400 animate-pulse ml-0.5"></span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Simulation complete - results display */}
+                            {expResults && !expRunning && (
+                              <div className="space-y-4 animate-scale-in">
+                                <div className="border-t border-slate-200 pt-4">
+                                  <h5 className="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Activity className="w-4 h-4 text-emerald-600" />
+                                    Quantified Dependent Variable Signals
+                                  </h5>
+                                  
+                                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                                    <table className="w-full text-left text-[11px]">
+                                      <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                                        <tr>
+                                          <th className="px-4 py-2">Observed Variable</th>
+                                          <th className="px-4 py-2">Quantified Value</th>
+                                          <th className="px-4 py-2">Clinical Quality status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100 font-medium">
+                                        {expResults.map((out, idx) => (
+                                          <tr key={idx} className="hover:bg-slate-50/50">
+                                            <td className="px-4 py-2.5 text-slate-800 font-bold">{out.name}</td>
+                                            <td className="px-4 py-2.5 font-mono text-teal-700 font-extrabold bg-teal-50/20">{out.value} {out.unit}</td>
+                                            <td className="px-4 py-2.5">
+                                              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                                out.evaluation.includes('Safe') || out.evaluation.includes('Optimal') || out.evaluation.includes('Stable') || out.evaluation.includes('Healthy') || out.evaluation.includes('Protected') || out.evaluation.includes('Success')
+                                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                  : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                              }`}>
+                                                {out.evaluation}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+
+                                {/* Save report status feedback */}
+                                {expSaveSuccess ? (
+                                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center text-emerald-800 font-bold text-xs space-y-1 animate-scale-in">
+                                    <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+                                    <p>Assay Report Successfully Published!</p>
+                                    <p className="text-[10px] text-emerald-600 font-medium leading-relaxed">
+                                      The study has been synchronized to your Central Portfolio. Open your Dashboard view to verify your unlocked badges and XP progression!
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const customReport: SavedReport = {
+                                        id: `report-${Date.now()}`,
+                                        experimentName: selectedTopic.title,
+                                        timestamp: new Date().toLocaleDateString(),
+                                        researchQuestion: selectedTopic.researchQuestion,
+                                        method: `Manipulated factor [${hypothesisInd}] to calibration ${expIndValue}%. Secondary reaction control adjusted to ${expCoFactor} units. Scientific Rationale: "${hypothesisRationale}"`,
+                                        observation: `In-silico simulation results: ${expResults.map(o => `${o.name} measured ${o.value} ${o.unit} (${o.evaluation})`).join(', ')}.`,
+                                        conclusion: `The simulated assay was executed successfully inside the BioBridge testing framework. Our findings support the formulated thesis: modifying ${hypothesisInd} drives a corresponding non-linear shift in target somatic and chemical pathways.`,
+                                        resultSummary: `Assay completed under ${prot.bsl} guidelines. Metrics compiled with high statistical confidence.`
+                                      };
+                                      handleSaveSimulationReport(selectedTopic.id, customReport);
+                                      setExpSaveSuccess(true);
+                                    }}
+                                    className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[11px] rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-md"
+                                  >
+                                    <Award className="w-4 h-4 text-amber-400" />
+                                    Publish Results & Save Study Report to Portfolio (+150 XP)
+                                  </button>
+                                )}
+
+                              </div>
+                            )}
+
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between gap-3 shrink-0 rounded-b-2xl">
+                  <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium font-mono">
+                    <Microscope className="w-3.5 h-3.5 text-teal-600" />
+                    <span>BioBridge Laboratory Engine v2.4</span>
                   </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTopic(null)}
+                    className="px-5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold cursor-pointer shadow-3xs transition-all"
+                  >
+                    Close Brief
+                  </button>
                 </div>
               </div>
-
-              {/* Footer close */}
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-2xl">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTopic(null)}
-                  className="px-5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold cursor-pointer shadow-3xs transition-all"
-                >
-                  Close Brief
-                </button>
-              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         </>
       ) : (
         <div className="space-y-6" id="active-simulation-workspace">

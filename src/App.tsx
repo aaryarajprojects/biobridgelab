@@ -197,7 +197,7 @@ export default function App() {
             completedSimulations: Array.isArray(parsed.completedSimulations) ? parsed.completedSimulations : [],
             savedReports: Array.isArray(parsed.savedReports) ? parsed.savedReports : [],
             studentName: typeof parsed.studentName === 'string' ? parsed.studentName : 'Student Researcher',
-            learningLevel: [1, 2, 3, 4].includes(parsed.learningLevel) ? parsed.learningLevel : 1,
+            learningLevel: [1, 2, 3, 4, 5].includes(parsed.learningLevel) ? parsed.learningLevel : 1,
             researchJourneyStatus: typeof parsed.researchJourneyStatus === 'string' ? parsed.researchJourneyStatus : 'Beginner',
             completedQuizzes: Array.isArray(parsed.completedQuizzes) ? parsed.completedQuizzes : [],
             quizScores: parsed.quizScores && typeof parsed.quizScores === 'object' ? parsed.quizScores : {},

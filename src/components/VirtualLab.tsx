@@ -6,6 +6,7 @@ import {
   ClipboardList, X, History, Database, Dna, Bookmark
 } from 'lucide-react';
 import { SavedReport, UserProgress } from '../types';
+import SequenceVisualizer from './SequenceVisualizer';
 
 // ============================================================================
 // CODON MAP & REFERENCE DATA
@@ -484,12 +485,14 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   const [compSeqB, setCompSeqB] = useState<string>('ATGGTGCACCTGACTCCTGAGGAGAAGTCC');
   const [compError, setCompError] = useState<string>('');
   const [compResult, setCompResult] = useState<any>(null);
+  const [comparatorInspectorStrand, setComparatorInspectorStrand] = useState<'A' | 'B'>('A');
 
   // 3. Tool 3: Mutation Explorer States
   const [mutOriginal, setMutOriginal] = useState<string>('ATGGTGCACCTGACTCCTGAGGAGAAG');
   const [mutModified, setMutModified] = useState<string>('ATGGTGCACCTGACTCCTGTGGAGAAG');
   const [mutError, setMutError] = useState<string>('');
   const [mutResult, setMutResult] = useState<any>(null);
+  const [mutationInspectorStrand, setMutationInspectorStrand] = useState<'Original' | 'Mutated'>('Original');
 
   // 4. Tool 4: Translation Explorer States
   const [transSeq, setTransSeq] = useState<string>('ATGTCACCACAAACAGAGACTAAAGCA');
@@ -733,11 +736,52 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
     return cleaned;
   };
 
+  // Sandbox helper: generate random DNA nucleotides of specified length
+  const generateRandomDNA = (length: number = 60): string => {
+    const bases = ['A', 'T', 'G', 'C'];
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += bases[Math.floor(Math.random() * bases.length)];
+    }
+    return result;
+  };
+
+  // Sandbox helper: introduce a random single-point substitution mutation in a sequence
+  const injectRandomMutation = (seq: string): string => {
+    if (seq.length < 3) return seq;
+    const bases = ['A', 'T', 'G', 'C'];
+    const idx = Math.floor(Math.random() * seq.length);
+    const originalBase = seq[idx];
+    const filteredBases = bases.filter(b => b !== originalBase);
+    const newBase = filteredBases[Math.floor(Math.random() * filteredBases.length)];
+    return seq.substring(0, idx) + newBase + seq.substring(idx + 1);
+  };
+
+  // Sandbox helper: generate sequence with guaranteed Open Reading Frame (Start to Stop)
+  const generatePerfectORF = (codonCount: number = 9): string => {
+    const bases = ['A', 'T', 'G', 'C'];
+    let result = 'ATG'; // Start codon
+    const stopCodons = ['TAA', 'TAG', 'TGA'];
+    for (let i = 0; i < codonCount - 2; i++) {
+      let codon = '';
+      do {
+        codon = bases[Math.floor(Math.random() * 4)] + bases[Math.floor(Math.random() * 4)] + bases[Math.floor(Math.random() * 4)];
+      } while (stopCodons.includes(codon)); // avoid premature STOP
+      result += codon;
+    }
+    result += stopCodons[Math.floor(Math.random() * stopCodons.length)]; // Stop codon
+    return result;
+  };
+
   // ============================================================================
   // LOGIC: DNA ANALYZER
   // ============================================================================
-  const executeAnalyzer = () => {
-    const cleaned = cleanAndValidateDNA(analyzerSeq, setAnalyzerError);
+  const executeAnalyzer = (overrideSeq?: string) => {
+    const seq = overrideSeq !== undefined ? overrideSeq : analyzerSeq;
+    if (overrideSeq !== undefined) {
+      setAnalyzerSeq(overrideSeq);
+    }
+    const cleaned = cleanAndValidateDNA(seq, setAnalyzerError);
     if (!cleaned) return;
 
     const len = cleaned.length;
@@ -789,10 +833,14 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   // ============================================================================
   // LOGIC: SEQUENCE COMPARATOR
   // ============================================================================
-  const executeComparator = () => {
-    const cleanedA = cleanAndValidateDNA(compSeqA, setCompError);
+  const executeComparator = (overrideA?: string, overrideB?: string) => {
+    const seqA = overrideA !== undefined ? overrideA : compSeqA;
+    const seqB = overrideB !== undefined ? overrideB : compSeqB;
+    if (overrideA !== undefined) setCompSeqA(overrideA);
+    if (overrideB !== undefined) setCompSeqB(overrideB);
+    const cleanedA = cleanAndValidateDNA(seqA, setCompError);
     if (!cleanedA) return;
-    const cleanedB = cleanAndValidateDNA(compSeqB, setCompError);
+    const cleanedB = cleanAndValidateDNA(seqB, setCompError);
     if (!cleanedB) return;
 
     // Pad if lengths are different to simulate clinical gaps, or alert
@@ -879,10 +927,14 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
     return protein || 'No complete codons';
   };
 
-  const executeMutationExplorer = () => {
-    const orig = cleanAndValidateDNA(mutOriginal, setMutError);
+  const executeMutationExplorer = (overrideOrig?: string, overrideMut?: string) => {
+    const origSeq = overrideOrig !== undefined ? overrideOrig : mutOriginal;
+    const mutSeq = overrideMut !== undefined ? overrideMut : mutModified;
+    if (overrideOrig !== undefined) setMutOriginal(overrideOrig);
+    if (overrideMut !== undefined) setMutModified(overrideMut);
+    const orig = cleanAndValidateDNA(origSeq, setMutError);
     if (!orig) return;
-    const mut = cleanAndValidateDNA(mutModified, setMutError);
+    const mut = cleanAndValidateDNA(mutSeq, setMutError);
     if (!mut) return;
 
     const origLen = orig.length;
@@ -982,8 +1034,10 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   // ============================================================================
   // LOGIC: TRANSLATION EXPLORER
   // ============================================================================
-  const executeTranslator = () => {
-    const cleaned = cleanAndValidateDNA(transSeq, setTransError);
+  const executeTranslator = (overrideSeq?: string) => {
+    const seq = overrideSeq !== undefined ? overrideSeq : transSeq;
+    if (overrideSeq !== undefined) setTransSeq(overrideSeq);
+    const cleaned = cleanAndValidateDNA(seq, setTransError);
     if (!cleaned) return;
 
     // Group sequence into codons (triplets)
@@ -1032,23 +1086,25 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
   const handleLoadSample = (sample: ReferenceSample) => {
     if (activeTab === 'analyzer') {
       setAnalyzerSeq(sample.sequence);
-      setAnalyzerResult(null);
+      setTimeout(() => executeAnalyzer(sample.sequence), 10);
     } else if (activeTab === 'comparator') {
       setCompSeqA(sample.sequence);
       // Create a slight variant for B
       const variant = sample.sequence.substring(0, sample.sequence.length - 1) + 
         (sample.sequence.endsWith('G') ? 'C' : 'G');
       setCompSeqB(variant);
-      setCompResult(null);
+      setTimeout(() => executeComparator(sample.sequence, variant), 10);
     } else if (activeTab === 'mutation') {
-      setMutOriginal(sample.sequence.substring(0, 30));
+      const orig = sample.sequence.substring(0, 30);
       // Create a point mutation
       const mutated = sample.sequence.substring(0, 19) + 'T' + sample.sequence.substring(20, 30);
+      setMutOriginal(orig);
       setMutModified(mutated);
-      setMutResult(null);
+      setTimeout(() => executeMutationExplorer(orig, mutated), 10);
     } else if (activeTab === 'translator') {
-      setTransSeq(sample.sequence.substring(0, 27));
-      setTransResult(null);
+      const trans = sample.sequence.substring(0, 27);
+      setTransSeq(trans);
+      setTimeout(() => executeTranslator(trans), 10);
     }
   };
 
@@ -1232,18 +1288,18 @@ export default function VirtualLab({ progress, onSaveReport }: VirtualLabProps) 
     setActiveTab(targetTool);
     if (targetTool === 'analyzer') {
       setAnalyzerSeq(sample.sequenceA);
-      setAnalyzerResult(null);
+      setTimeout(() => executeAnalyzer(sample.sequenceA), 10);
     } else if (targetTool === 'comparator' && sample.sequenceB) {
       setCompSeqA(sample.sequenceA);
       setCompSeqB(sample.sequenceB);
-      setCompResult(null);
+      setTimeout(() => executeComparator(sample.sequenceA, sample.sequenceB), 10);
     } else if (targetTool === 'mutation' && sample.sequenceB) {
       setMutOriginal(sample.sequenceA);
       setMutModified(sample.sequenceB);
-      setMutResult(null);
+      setTimeout(() => executeMutationExplorer(sample.sequenceA, sample.sequenceB), 10);
     } else if (targetTool === 'translator') {
       setTransSeq(sample.sequenceA);
-      setTransResult(null);
+      setTimeout(() => executeTranslator(sample.sequenceA), 10);
     }
   };
 
@@ -1799,6 +1855,33 @@ ${activeReport.conclusion}
                     <p className="text-[10px] text-slate-400 font-medium">
                       Note: Lowercase is converted automatically, and spaces/newlines are ignored.
                     </p>
+                    <div className="flex gap-1.5 mt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const rand = generateRandomDNA(75);
+                          setAnalyzerSeq(rand);
+                          executeAnalyzer(rand);
+                        }}
+                        className="flex-1 py-1.5 px-2.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 hover:border-teal-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs flex items-center justify-center gap-1"
+                        id="sandbox-random-dna-btn"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                        Generate & Run Random DNA (75bp)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAnalyzerSeq('');
+                          setAnalyzerResult(null);
+                          setAnalyzerError('');
+                        }}
+                        className="py-1.5 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs"
+                        id="sandbox-clear-dna-btn"
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
 
                   {analyzerError && (
@@ -1809,7 +1892,7 @@ ${activeReport.conclusion}
                   )}
 
                   <button
-                    onClick={executeAnalyzer}
+                    onClick={() => executeAnalyzer()}
                     className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
                   >
                     <Activity className="w-4 h-4" />
@@ -1864,6 +1947,14 @@ ${activeReport.conclusion}
                           ))}
                         </div>
                       </div>
+
+                      {/* Dynamic Interactive Sequence Visualizer */}
+                      <SequenceVisualizer 
+                        sequence={analyzerResult.sequence} 
+                        type="dna" 
+                        title="Interactive Nucleotide Map" 
+                        id="analyzer-sequence-visualizer" 
+                      />
 
                       {/* Antiparallel Strands */}
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5 text-xs">
@@ -1995,6 +2086,40 @@ ${activeReport.conclusion}
                     />
                   </div>
 
+                  <div className="flex gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const baseSeq = generateRandomDNA(45);
+                        let mutSeq = baseSeq;
+                        for (let i = 0; i < 4; i++) {
+                          mutSeq = injectRandomMutation(mutSeq);
+                        }
+                        setCompSeqA(baseSeq);
+                        setCompSeqB(mutSeq);
+                        setTimeout(() => executeComparator(baseSeq, mutSeq), 10);
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-teal-50 hover:bg-teal-100 text-teal-850 border border-teal-200 hover:border-teal-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs flex items-center justify-center gap-1"
+                      id="sandbox-random-compare-btn"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                      Generate Homologous Pair (45bp)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompSeqA('');
+                        setCompSeqB('');
+                        setCompResult(null);
+                        setCompError('');
+                      }}
+                      className="py-1.5 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs"
+                      id="sandbox-clear-compare-btn"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
                   {compError && (
                     <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
@@ -2003,7 +2128,7 @@ ${activeReport.conclusion}
                   )}
 
                   <button
-                    onClick={executeComparator}
+                    onClick={() => executeComparator()}
                     className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
                   >
                     <GitCompare className="w-4 h-4" />
@@ -2037,6 +2162,39 @@ ${activeReport.conclusion}
                           <span className="text-[9px] text-slate-400 font-mono font-bold uppercase block tracking-wider">Gaps / Indels</span>
                           <span className="text-lg font-black text-slate-500">{compResult.gaps} bp</span>
                         </div>
+                      </div>
+
+                      {/* Interactive Strand Inspector */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider text-[10px] font-mono">Interactive Strand Inspector</span>
+                          <div className="flex bg-slate-200/60 rounded-lg p-0.5 border border-slate-200 w-max shadow-3xs">
+                            <button 
+                              type="button"
+                              onClick={() => setComparatorInspectorStrand('A')} 
+                              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                comparatorInspectorStrand === 'A' ? 'bg-teal-600 text-white shadow-3xs' : 'text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              Strand A
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => setComparatorInspectorStrand('B')} 
+                              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                comparatorInspectorStrand === 'B' ? 'bg-teal-600 text-white shadow-3xs' : 'text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              Strand B
+                            </button>
+                          </div>
+                        </div>
+                        <SequenceVisualizer 
+                          sequence={comparatorInspectorStrand === 'A' ? compResult.seqA : compResult.seqB} 
+                          type="dna" 
+                          title={`Strand ${comparatorInspectorStrand} Analysis`} 
+                          id={`comparator-strand-${comparatorInspectorStrand}-visualizer`} 
+                        />
                       </div>
 
                       {/* Visual Alignment Map */}
@@ -2232,6 +2390,37 @@ ${activeReport.conclusion}
                     />
                   </div>
 
+                  <div className="flex gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const orig = generateRandomDNA(30);
+                        const modified = injectRandomMutation(orig);
+                        setMutOriginal(orig);
+                        setMutModified(modified);
+                        setTimeout(() => executeMutationExplorer(orig, modified), 10);
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-teal-50 hover:bg-teal-100 text-teal-850 border border-teal-200 hover:border-teal-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs flex items-center justify-center gap-1"
+                      id="sandbox-random-mutation-btn"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                      Generate & Mutate Strand (30bp)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMutOriginal('');
+                        setMutModified('');
+                        setMutResult(null);
+                        setMutError('');
+                      }}
+                      className="py-1.5 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs"
+                      id="sandbox-clear-mutation-btn"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
                   {mutError && (
                     <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
@@ -2240,7 +2429,7 @@ ${activeReport.conclusion}
                   )}
 
                   <button
-                    onClick={executeMutationExplorer}
+                    onClick={() => executeMutationExplorer()}
                     className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
                   >
                     <Layers className="w-4 h-4" />
@@ -2266,6 +2455,39 @@ ${activeReport.conclusion}
                         </div>
                         <h3 className="text-sm font-black text-slate-900">{mutResult.mutationType}</h3>
                         <p className="text-xs text-slate-600 leading-relaxed font-medium">{mutResult.explanation}</p>
+                      </div>
+
+                      {/* Interactive DNA Strand Inspector */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider text-[10px] font-mono">Interactive Sequence Inspector</span>
+                          <div className="flex bg-slate-200/60 rounded-lg p-0.5 border border-slate-200 w-max shadow-3xs">
+                            <button 
+                              type="button"
+                              onClick={() => setMutationInspectorStrand('Original')} 
+                              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                mutationInspectorStrand === 'Original' ? 'bg-teal-600 text-white shadow-3xs' : 'text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              Baseline (Reference)
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => setMutationInspectorStrand('Mutated')} 
+                              className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                mutationInspectorStrand === 'Mutated' ? 'bg-teal-600 text-white shadow-3xs' : 'text-slate-600 hover:text-slate-800'
+                              }`}
+                            >
+                              Mutated (Test)
+                            </button>
+                          </div>
+                        </div>
+                        <SequenceVisualizer 
+                          sequence={mutationInspectorStrand === 'Original' ? mutResult.orig : mutResult.mut} 
+                          type="dna" 
+                          title={`${mutationInspectorStrand} DNA Template`} 
+                          id={`mutation-strand-${mutationInspectorStrand}-visualizer`} 
+                        />
                       </div>
 
                       {/* Peptide Comparison */}
@@ -2384,6 +2606,34 @@ ${activeReport.conclusion}
                     />
                   </div>
 
+                  <div className="flex gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const orf = generatePerfectORF(10);
+                        setTransSeq(orf);
+                        setTimeout(() => executeTranslator(orf), 10);
+                      }}
+                      className="flex-1 py-1.5 px-2 bg-teal-50 hover:bg-teal-100 text-teal-850 border border-teal-200 hover:border-teal-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs flex items-center justify-center gap-1"
+                      id="sandbox-random-translate-btn"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                      Generate ORF Chain (30bp)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTransSeq('');
+                        setTransResult(null);
+                        setTransError('');
+                      }}
+                      className="py-1.5 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-3xs"
+                      id="sandbox-clear-translate-btn"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
                   {transError && (
                     <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
@@ -2392,7 +2642,7 @@ ${activeReport.conclusion}
                   )}
 
                   <button
-                    onClick={executeTranslator}
+                    onClick={() => executeTranslator()}
                     className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-3xs"
                   >
                     <Activity className="w-4 h-4" />
@@ -2406,15 +2656,12 @@ ${activeReport.conclusion}
                     <div className="space-y-6 animate-fade-in" id="trans-result-box">
                       
                       {/* Transcription mRNA transcript banner */}
-                      <div className="p-4 bg-teal-50/20 border border-teal-150 rounded-xl space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-mono font-bold text-teal-800 uppercase tracking-wide text-[9px]">Transcribed mRNA Copy (5' → 3'):</span>
-                          <span className="text-slate-400 font-mono text-[9px]">{transResult.codonCount} Codons</span>
-                        </div>
-                        <div className="font-mono font-black text-xs break-all text-teal-950 bg-white p-2 rounded border border-teal-100 shadow-3xs">
-                          {transResult.rnaSeq}
-                        </div>
-                      </div>
+                      <SequenceVisualizer 
+                        sequence={transResult.rnaSeq} 
+                        type="rna" 
+                        title="Transcribed mRNA Copy" 
+                        id="translator-mrna-sequence-visualizer" 
+                      />
 
                       {/* Ribosome Translation Chain */}
                       <div className="space-y-3">
@@ -2919,30 +3166,20 @@ ${activeReport.conclusion}
                           </label>
                         </div>
 
-                        {/* Raw Nucleobases Box */}
+                        {/* Interactive Sequence Visualizer */}
                         <div className="space-y-2">
                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wide block">
-                            Sanitized {ncbiDb === 'protein' ? 'Protein' : 'DNA Nucleotide'} Sequence ({ncbiTrimSequence && ncbiFetchedSeq.length > 150 ? `Showing first 150 ${ncbiDb === 'protein' ? 'aa' : 'bp'}` : 'Full Sequence'}):
+                            Interactive {ncbiDb === 'protein' ? 'Protein' : 'DNA Nucleotide'} Sequence Viewer:
                           </span>
-                          <div className="p-4 bg-slate-950 text-slate-200 rounded-xl border border-slate-900 font-mono text-xs overflow-hidden shadow-inner space-y-2">
-                            <div className="max-h-28 overflow-y-auto break-all scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent leading-relaxed text-teal-400 font-bold">
-                              {ncbiTrimSequence && ncbiFetchedSeq.length > 150 
-                                ? ncbiFetchedSeq.substring(0, 150) 
-                                : ncbiFetchedSeq
-                              }
-                            </div>
-                            <div className="pt-2 border-t border-slate-900 flex justify-between items-center text-[10px] text-slate-400">
-                              <span>Showing {ncbiTrimSequence && ncbiFetchedSeq.length > 150 ? '150' : ncbiFetchedSeq.length} of {ncbiFetchedSeq.length} {ncbiDb === 'protein' ? 'aa' : 'bp'}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(ncbiTrimSequence && ncbiFetchedSeq.length > 150 ? ncbiFetchedSeq.substring(0, 150) : ncbiFetchedSeq, 'ncbi-seq')}
-                                className="text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1 cursor-pointer"
-                              >
-                                {copiedText === 'ncbi-seq' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                Copy {ncbiDb === 'protein' ? 'Protein' : 'DNA'} Sequence
-                              </button>
-                            </div>
-                          </div>
+                          <SequenceVisualizer 
+                            sequence={ncbiTrimSequence && ncbiFetchedSeq.length > 150 
+                              ? ncbiFetchedSeq.substring(0, 150) 
+                              : ncbiFetchedSeq
+                            } 
+                            type={ncbiDb === 'protein' ? 'protein' : 'dna'} 
+                            title={`Fetched ${ncbiDb === 'protein' ? 'Protein' : 'Nucleotide'} Record`} 
+                            id="ncbi-fetched-sequence-visualizer" 
+                          />
                         </div>
 
                         {/* Dispatcher Actions */}

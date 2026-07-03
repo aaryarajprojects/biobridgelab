@@ -20,7 +20,7 @@ export interface UserProgress {
   savedReports?: SavedReport[];
   // Persistent Student Profile & Progress Fields
   studentName?: string;
-  learningLevel?: 1 | 2 | 3 | 4;
+  learningLevel?: 1 | 2 | 3 | 4 | 5;
   researchJourneyStatus?: string;
   completedQuizzes?: string[];
   quizScores?: Record<string, { score: number; total: number; correctAnswers: number }>;
@@ -35,7 +35,7 @@ export interface DNASeqSample {
 
 export interface Lesson {
   id: string;
-  level: 1 | 2 | 3 | 4;
+  level: 1 | 2 | 3 | 4 | 5;
   title: string;
   subtitle: string;
   shortDesc: string;
@@ -832,6 +832,468 @@ export const LESSONS: Lesson[] = [
         ],
         correctIndex: 1,
         explanation: "Cas9 is an endonuclease enzyme that acts as molecular scissors, cutting double-stranded DNA at the target site guided by the gRNA sequence."
+      }
+    }
+  },
+  // ================= LEVEL 1 EXTRA LESSONS =================
+  {
+    id: "rna-world",
+    level: 1,
+    title: "The RNA World and RNA Types",
+    subtitle: "Beyond Messenger RNA",
+    shortDesc: "Explore the ancient origins of life and the diverse functional classes of RNA molecules that govern cellular biology.",
+    duration: "12 mins",
+    content: {
+      title: "The Multitude of RNA Roles & Evolutionary Origins",
+      paragraphs: [
+        "While DNA serves as the passive, stable hard-drive of genetic information, Ribonucleic Acid (RNA) is a dynamic, multi-talented molecular worker. Structurally, RNA differs from DNA by containing a ribose sugar (possessing a reactive 2'-hydroxyl group) instead of deoxyribose, and using the base Uracil (U) instead of Thymine (T).",
+        "The 'RNA World Hypothesis' proposes that early life forms relied entirely on RNA to both store genetic information and catalyze chemical reactions. This dual capability is highlighted by ribozymes—RNA molecules that possess enzymatic activity, such as the ribosomal RNA that catalyzes peptide bond formation.",
+        "In modern cells, RNA functions far beyond simple messenger RNA (mRNA). Transfer RNA (tRNA) and ribosomal RNA (rRNA) are the structural and catalytic backbones of translation. Small nuclear RNAs (snRNAs) drive spliceosome assembly. MicroRNAs (miRNAs) and small interfering RNAs (siRNAs) act as post-transcriptional regulators, targeting mRNA transcripts for degradation or translational repression."
+      ],
+      learningObjective: "Compare the structural differences between DNA and RNA, and distinguish between messenger, ribosomal, transfer, and regulatory RNA classes.",
+      keyConcepts: [
+        "The reactive 2'-OH group on ribose makes RNA more chemically versatile but less stable than DNA.",
+        "Ribozymes prove that nucleic acids can behave as enzymes, supporting the RNA World Hypothesis.",
+        "Diverse RNA families (mRNA, tRNA, rRNA, snRNA, miRNA) cooperate to control gene expression and protein synthesis."
+      ],
+      interactiveExample: {
+        title: "RNA Structure & Type Selector",
+        description: "Select various RNA categories to inspect their specialized configurations and biological roles.",
+        type: "rna_explorer"
+      },
+      miniActivity: {
+        prompt: "Which class of RNA molecules associates with proteins to form the spliceosome complexes that remove introns?",
+        options: ["tRNA", "miRNA", "snRNA", "rRNA"],
+        correctAnswer: "snRNA",
+        feedback: "Correct! Small nuclear RNAs (snRNAs) combine with proteins to form small nuclear ribonucleoproteins (snRNPs), the active components of the spliceosome."
+      },
+      summary: "RNA is a structurally versatile molecule that acts as both a genetic carrier and a biochemical catalyst. This support for catalytic and informational roles underpins the hypothesis that life originated in an RNA-dominated world.",
+      quickQuiz: {
+        question: "What is the primary evolutionary and chemical evidence supporting the RNA World Hypothesis?",
+        options: [
+          "RNA is completely immune to heat denaturation",
+          "RNA can act as both an information-carrying template and a biological catalyst (ribozyme)",
+          "RNA contains deoxyribose sugars that form triple helices",
+          "RNA is only synthesized by modern artificial intelligence systems"
+        ],
+        correctIndex: 1,
+        explanation: "The discovery of ribozymes (like the ribosome) proved that RNA can fold into complex 3D shapes to catalyze biochemical reactions while simultaneously carrying sequence information, solving the 'chicken-and-egg' dilemma of whether proteins or DNA came first."
+      }
+    }
+  },
+
+  // ================= LEVEL 2 EXTRA LESSONS =================
+  {
+    id: "structural-bioinformatics",
+    level: 2,
+    title: "Structural Bioinformatics",
+    subtitle: "Modeling Protein Folds",
+    shortDesc: "Delve into the Protein Data Bank (PDB), secondary structures, and how computer models predict complex 3D protein folds.",
+    duration: "15 mins",
+    content: {
+      title: "Mapping Proteins in Three Dimensions",
+      paragraphs: [
+        "An amino acid sequence is just a one-dimensional string. To perform its biological duty, a protein must fold into a highly specific three-dimensional conformation. Structural bioinformatics focuses on analyzing, modeling, and predicting these complex molecular geometries.",
+        "Protein structure is organized into four distinct tiers. Primary structure is the linear sequence of amino acids. Secondary structure consists of localized, regular folding patterns—principally alpha-helices and beta-pleated sheets—stabilized by hydrogen bonds along the peptide backbone. Tertiary structure is the overall 3D packing of a single polypeptide, driven by hydrophobic collapse, salt bridges, and disulfide bonds. Quaternary structure involves the assembly of multiple polypeptide subunits.",
+        "The Protein Data Bank (PDB) is the central global repository for coordinates obtained via X-ray crystallography, NMR, and cryo-EM. Recently, deep learning models like AlphaFold have revolutionized the field by predicting highly accurate 3D structures directly from 1D primary sequences, bypassing years of expensive laboratory testing."
+      ],
+      learningObjective: "Identify the four levels of protein structural organization and explain how public records coordinate macromolecular visualizations.",
+      keyConcepts: [
+        "Protein function is strictly determined by its folded 3D physical configuration.",
+        "Secondary structures like alpha-helices are stabilized by hydrogen bonding along the peptide backbone.",
+        "Deep learning tools utilize evolutionary sequence conservation to predict 3D folds with extreme accuracy."
+      ],
+      interactiveExample: {
+        title: "3D Protein Fold Viewer",
+        description: "Interact with alpha helices and beta sheets to learn how secondary elements align into tertiary folds.",
+        type: "protein_structure"
+      },
+      miniActivity: {
+        prompt: "What primary thermodynamic force drives the rapid folding of soluble proteins in an aqueous environment?",
+        options: ["Covalent backbone cleavage", "Hydrophobic collapse (burial of nonpolar sidechains)", "Magnetic alignment of amino groups", "Active energy pumping by the nucleus"],
+        correctAnswer: "Hydrophobic collapse (burial of nonpolar sidechains)",
+        feedback: "Correct! Soluble proteins hide their hydrophobic nonpolar sidechains inside their core while exposing polar hydrophilic sidechains to water, minimizing free energy."
+      },
+      summary: "Proteins fold through complex thermodynamic pathways to achieve stable 3D states. Structural databases index these physical coordinate maps, and AI models have dramatically accelerated our ability to predict them.",
+      quickQuiz: {
+        question: "Which molecular database acts as the worldwide standard repository for three-dimensional biological macromolecular structures?",
+        options: [
+          "NCBI PubMed",
+          "UniProt Consortium",
+          "The Protein Data Bank (PDB)",
+          "GenBank Nucleotide Library"
+        ],
+        correctIndex: 2,
+        explanation: "The Protein Data Bank (PDB) specifically stores and archives 3D coordinate files (like .pdb or .cif) for proteins, nucleic acids, and complex assemblies."
+      }
+    }
+  },
+
+  // ================= LEVEL 3 EXTRA LESSONS =================
+  {
+    id: "primer-design-pcr",
+    level: 3,
+    title: "PCR and Primer Design",
+    subtitle: "Amplifying the Signal",
+    shortDesc: "Master the mathematical and thermodynamic rules for designing specific PCR primers to amplify targeted genomic loci.",
+    duration: "12 mins",
+    content: {
+      title: "Principles of Polymerase Chain Reaction & Primer Engineering",
+      paragraphs: [
+        "The Polymerase Chain Reaction (PCR) is an indispensable molecular biology technique used to amplify a single copy or a few copies of a specific segment of DNA across several orders of magnitude, generating millions of copies.",
+        "The reaction cycles through three thermal stages: Denaturation (typically ~95°C) to separate double-stranded DNA; Annealing (~50-65°C) to allow short synthetic DNA oligonucleotides, called primers, to bind complementary target sequences; and Extension (~72°C) where a thermostable DNA polymerase (like Taq polymerase) synthesizes the new strand.",
+        "Success in PCR depends on precise primer design. Bioinformaticians apply strict design criteria: primers must be 18-25 nucleotides in length, have a melting temperature (Tm) between 55-65°C, avoid complementary self-binding (preventing 'primer-dimers'), and contain a G-C clamp (at least one G or C at the 3' end) to anchor polymerase binding."
+      ],
+      learningObjective: "Apply thermodynamic rules to calculate primer melting temperatures and screen for problematic self-complementarity.",
+      keyConcepts: [
+        "PCR utilizes thermal cycling to exponentially duplicate targeted DNA regions in vitro.",
+        "Melting temperature (Tm) can be approximated using the Wallace formula: Tm = 2(A+T) + 4(G+C) for short sequences.",
+        "3' self-complementarity must be eliminated to prevent primers from binding to themselves and forming dimers."
+      ],
+      interactiveExample: {
+        title: "Thermodynamic Primer Designer",
+        description: "Draft forward and reverse primers and evaluate their melting temperatures, GC-clamps, and self-binding properties.",
+        type: "primer_designer"
+      },
+      miniActivity: {
+        prompt: "Using the formula Tm = 2(A+T) + 4(G+C), estimate the melting temperature of the primer 'GCTAGC'.",
+        options: ["12°C", "16°C", "20°C", "24°C"],
+        correctAnswer: "20°C",
+        feedback: "Correct! The 6-mer 'GCTAGC' contains 2 A/T bases and 4 G/C bases. 2(2) + 4(4) = 4 + 16 = 20°C."
+      },
+      summary: "PCR relies on thermal cycling to copy genes. Designing functional primers requires strict calculation of melting temperatures and avoidance of self-complementarity.",
+      quickQuiz: {
+        question: "Why is a 'G-C clamp' (presence of G or C bases at the 3' end of a primer) highly desirable in primer design?",
+        options: [
+          "G-C bases are lighter and make the tube spin faster",
+          "G-C pairs are bound by three hydrogen bonds, creating a stronger, more stable anchor for the DNA polymerase at the synthesis starting point",
+          "G-C clamps prevent any primers from dissolving in the liquid buffer",
+          "G-C clamps trigger the destruction of any template contaminants"
+        ],
+        correctIndex: 1,
+        explanation: "Because G-C pairs share three hydrogen bonds, they bond more tightly than A-T pairs. Placing them at the 3' end (the starting point for synthesis) ensures the primer is securely anchored to the template as elongation begins."
+      }
+    }
+  },
+
+  // ================= LEVEL 4 EXTRA LESSONS =================
+  {
+    id: "next-gen-sequencing",
+    level: 4,
+    title: "Next-Generation Sequencing",
+    subtitle: "High-Throughput Sequencing",
+    shortDesc: "Understand Illumina sequencing-by-synthesis chemistry, sequencing depth, coverage, and the power of single-cell RNA-seq.",
+    duration: "15 mins",
+    content: {
+      title: "Massively Parallel Sequencing Technologies",
+      paragraphs: [
+        "Sanger sequencing was a breakthrough, but it can only sequence one DNA fragment at a time. Next-Generation Sequencing (NGS) has democratized genomics by enabling the massively parallel sequencing of millions of fragments simultaneously, slashing costs and timelines.",
+        "A premier modern method is Illumina's sequencing-by-synthesis. Genomic DNA is fragmented, attached to a flow cell, and amplified into dense clonal clusters via bridge PCR. Fluorescently labeled, reversible-terminator nucleotides are then added. As each base is incorporated, a high-resolution camera captures the emitted light wavelength, recording the sequence letter by letter.",
+        "NGS bioinformatics focuses on 'sequencing depth' (how many times a given base is read on average) and 'coverage' (what percentage of the genome is represented). In recent years, Single-Cell RNA-seq (scRNA-seq) has emerged, allowing researchers to measure gene expression inside individual cells, revealing hidden cellular diversity within complex tissues."
+      ],
+      learningObjective: "Explain the biochemical steps of sequencing-by-synthesis and calculate basic sequencing coverage and depth metrics.",
+      keyConcepts: [
+        "NGS processes millions of fragments in parallel, producing massive datasets in a single run.",
+        "Sequencing-by-synthesis relies on reversible terminators that emit distinct fluorescent wavelengths.",
+        "Single-cell transcriptomics separates individual cells to profile gene activity without blending tissue signals."
+      ],
+      interactiveExample: {
+        title: "Illumina Read Simulator",
+        description: "Watch fluorescent letters light up as a virtual flow cell reads synthetic cluster fragments.",
+        type: "illumina_sim"
+      },
+      miniActivity: {
+        prompt: "If a genome is 10 million base pairs long, and you sequence 100 million total base pairs, what is the theoretical average sequencing depth (X)?",
+        options: ["1X", "5X", "10X", "100X"],
+        correctAnswer: "10X",
+        feedback: "Correct! Total sequenced bases / genome length = 100,000,000 / 10,000,000 = 10X sequencing depth."
+      },
+      summary: "Next-generation sequencing has made genomics high-throughput and affordable. Its computational analysis relies on aligning fragments to reference maps and managing sequencing depth.",
+      quickQuiz: {
+        question: "In next-generation sequencing, what does the metric 'Sequencing Depth' (e.g., 30X) represent?",
+        options: [
+          "The physical depth in micrometers of the glass flow cell",
+          "The average number of times each unique nucleotide base in the genome is sequenced by independent reads",
+          "The length of time in hours the sequencer machine is run",
+          "The percentage of the genome that was successfully captured"
+        ],
+        correctIndex: 1,
+        explanation: "Sequencing depth represents how many times a given genomic position is covered by raw sequenced reads. Higher depth (like 30X or 100X) is crucial for distinguishing true mutations from random sequencing errors."
+      }
+    }
+  },
+
+  // ================= LEVEL 5: SYSTEMS BIOLOGY & EPIGENOMICS =================
+  {
+    id: "epigenetics-chromatin",
+    level: 5,
+    title: "Epigenetics & Chromatin",
+    subtitle: "The Structural Controls",
+    shortDesc: "Investigate how DNA methylation, histone modifications, and nucleosome density control gene expression without changing the DNA sequence.",
+    duration: "15 mins",
+    content: {
+      title: "Epigenetic Regulation and Chromatin Dynamics",
+      paragraphs: [
+        "The sequence of bases (A, T, C, G) is not the sole determinant of gene expression. Epigenetics refers to heritable changes in gene activity that do not involve alterations to the underlying DNA sequence. This regulation is achieved by altering the physical structure and accessibility of chromatin.",
+        "Chromatin is composed of DNA wrapped around core octameric proteins called histones, forming repeating units called nucleosomes. When nucleosomes are packed tightly together (heterochromatin), transcription factors cannot access promoters, and genes are turned off. When nucleosomes are spaced widely apart (euchromatin), the DNA is accessible, and transcription can occur.",
+        "Two main biochemical mechanisms govern this accessibility: DNA Methylation and Histone Modification. Methylation of Cytosines in CpG dinucleotides by DNA methyltransferases generally acts to recruit repressor proteins, silencing genes. Conversely, histone tail modifications—such as acetylation of lysine residues by Histone Acetyltransferases (HATs)—neutralize positive charges on the histone proteins, weakening their grip on negatively charged DNA and unpacking chromatin to activate transcription."
+      ],
+      learningObjective: "Contrast heterochromatin vs euchromatin, explain the impact of DNA methylation, and analyze how histone acetylation alters physical DNA binding.",
+      keyConcepts: [
+        "Epigenetics controls gene expression by changing physical accessibility to promoter elements.",
+        "Histone acetylation neutralizes positive charges, relaxing the chromatin to allow transcription.",
+        "CpG methylation is a stable, heritable epigenetic mark that typically silences gene transcription."
+      ],
+      interactiveExample: {
+        title: "Chromatin Unfolding Simulation",
+        description: "Add acetyl groups or methyl marks to watch histones bundle or unravel, exposing the promoter site.",
+        type: "chromatin_sim"
+      },
+      miniActivity: {
+        prompt: "Which enzyme is responsible for adding acetyl groups to lysine residues on histone tails, promoting chromatin relaxation?",
+        options: ["Histone Deacetylase (HDAC)", "DNA Methyltransferase (DNMT)", "Histone Acetyltransferase (HAT)", "RNA Polymerase II"],
+        correctAnswer: "Histone Acetyltransferase (HAT)",
+        feedback: "Correct! Histone Acetyltransferases (HATs) add acetyl groups to relax chromatin, while Histone Deacetylases (HDACs) remove them to restore compact structures."
+      },
+      summary: "Epigenetics adds a layer of regulatory switches on top of DNA. Acetylation opens chromatin up to allow transcription, while methylation packs it tightly to silence expression.",
+      quickQuiz: {
+        question: "How does the acetylation of histone tail lysine residues physically trigger the unpacking of chromatin?",
+        options: [
+          "It physically cuts the DNA strands to shorten the chromosomes",
+          "It neutralizes the positive charge of lysine, reducing the electrostatic attraction between histones and negatively charged DNA",
+          "It replaces Thymine bases with Uracil in the histone core",
+          "It pumps air into the nuclear membrane to expand chromatin"
+        ],
+        correctIndex: 1,
+        explanation: "DNA is highly negatively charged due to its phosphate backbone, while lysines on histone tails are positively charged. Acetylating the lysine residues neutralizes their positive charge, causing the histones to release their tight grip on the DNA and unspool the chromatin."
+      }
+    }
+  },
+  {
+    id: "gene-regulatory-networks",
+    level: 5,
+    title: "Gene Regulatory Networks",
+    subtitle: "The Circuitry of Cells",
+    shortDesc: "Understand how transcription factors, promoters, feedback loops, and feed-forward motifs cooperate to process inputs inside living systems.",
+    duration: "15 mins",
+    content: {
+      title: "Network Motifs and Systems Biology Modeling",
+      paragraphs: [
+        "Cells are complex information processors. Rather than individual genes acting in isolation, genes are wired together into complex circuits called Gene Regulatory Networks (GRNs). In these networks, transcription factors (TFs) act as regulatory switches that bind to target promoter regions, activating or repressing transcription.",
+        "Systems biology has revealed that GRNs are composed of recurring structural building blocks called network motifs. The simplest is the Feedback Loop. In a negative feedback loop, a protein represses its own production, which stabilizes expression levels and reduces noise. In a positive feedback loop, a protein activates its own production, which can create bistable switches (the cell commits to one of two stable states, crucial for differentiation).",
+        "Another prevalent motif is the Feed-Forward Loop (FFL), consisting of three genes: a master regulator X, an intermediate regulator Y, and a target gene Z. FFLs can act as sign-sensitive delay filters (requiring a persistent signal to trigger target expression) or pulse generators, ensuring cells do not waste resources reacting to transient chemical noise."
+      ],
+      learningObjective: "Deconstruct feed-forward and feedback motifs, and model how these circuits filter cellular noise and establish binary state switches.",
+      keyConcepts: [
+        "Gene Regulatory Networks coordinate cellular behavior using transcription factor interactions.",
+        "Negative feedback stabilizes cellular concentration levels, while positive feedback enables stable switches.",
+        "Feed-forward loops filter out brief, transient environmental noise, preventing false trigger activations."
+      ],
+      interactiveExample: {
+        title: "Network Motif Simulator",
+        description: "Trigger transcriptional inputs on feed-forward and feedback motifs to observe real-time output curves.",
+        type: "network_motif_sim"
+      },
+      miniActivity: {
+        prompt: "Which network motif is characterized by a protein that actively represses its own transcription, serving to stabilize concentrations and suppress biological noise?",
+        options: ["Positive Feedback Loop", "Negative Feedback Loop", "Coherent Feed-Forward Loop", "Bistable toggle switch"],
+        correctAnswer: "Negative Feedback Loop",
+        feedback: "Correct! Negative feedback loop is a widespread stabilizing mechanism in cellular circuits, correcting any excessive increases or decreases."
+      },
+      summary: "Cells process signals using logical network motifs. Feedback loops stabilize or switch states, while feed-forward motifs act as smart filters to ignore transient environmental noise.",
+      quickQuiz: {
+        question: "What is the primary biological advantage of a coherent Feed-Forward Loop with an 'AND' gate configuration?",
+        options: [
+          "It speeds up transcription so fast that the cell burst",
+          "It acts as a delay filter that only activates the target gene when the input signal is highly persistent, ignoring transient chemical spikes",
+          "It forces the cell to immediately undergo cell division",
+          "It permanently disables the ribosome"
+        ],
+        correctIndex: 1,
+        explanation: "In an 'AND'-gate feed-forward loop, both the master regulator X and the intermediate regulator Y must be active to trigger target Z. Since Y takes time to accumulate, a brief, transient signal of X will decay before Y can activate, filtering out biological noise."
+      }
+    }
+  },
+  {
+    id: "synthetic-biology-circuits",
+    level: 5,
+    title: "Synthetic Gene Circuits",
+    subtitle: "Programming Living Matter",
+    shortDesc: "Explore how genetic engineers assemble synthetic toggle switches, repressilators, and logic gates to program living cells like computers.",
+    duration: "15 mins",
+    content: {
+      title: "Engineering Biological Logic Gates and Oscillators",
+      paragraphs: [
+        "Synthetic Biology is an engineering discipline that applies design principles to biology. Instead of merely analyzing existing networks, synthetic biologists build novel biological pathways from standardized, interchangeable genetic parts, often referred to as BioBricks.",
+        "A foundational milestone in synthetic biology was the construction of the genetic Toggle Switch. By wiring two mutually inhibitory transcription factors together, engineers created a bistable circuit. An external chemical pulse flips the switch into State A; a different pulse flips it into State B. The cell remembers its state even after the signal is removed, serving as a biological memory register.",
+        "Another classic circuit is the Repressilator—a synthetic genetic clock made of three promoters linked in a cyclic loop of negative feedback. Promoter A represses B, B represses C, and C represses A. This creates stable, periodic oscillations of green fluorescent protein, letting cells keep perfect track of time. Today, these circuits are combined with logical gates (AND, OR, NOT) to engineer smart bacteria that can locate and destroy tumor cells in vivo."
+      ],
+      learningObjective: "Explain how mutually inhibitory transcription factors construct biological memory, and design genetic logic gates to compute cellular inputs.",
+      keyConcepts: [
+        "Synthetic biology constructs novel pathways using modular, characterized genetic building blocks.",
+        "Mutually inhibitory transcription factor networks form toggle switches, serving as cellular memory.",
+        "Genetic logic gates combine chemical inputs to determine whether a target reporter protein is expressed."
+      ],
+      interactiveExample: {
+        title: "Genetic Circuit Builder",
+        description: "Assemble biological NOT and AND gates with mutually inhibitory promoters to program a synthetic bacterial sensor.",
+        type: "circuit_builder"
+      },
+      miniActivity: {
+        prompt: "How many mutually inhibitory transcription factors are wired together to construct a classic, bistable genetic toggle switch?",
+        options: ["One", "Two", "Three", "Four"],
+        correctAnswer: "Two",
+        feedback: "Correct! A genetic toggle switch relies on two transcription factors that mutually repress each other, ensuring only one can be active at any given time."
+      },
+      summary: "Synthetic biology applies engineering principles to design cell logic. Toggle switches store biological memory, while cyclic negative feedback creates precise internal clocks.",
+      quickQuiz: {
+        question: "What is the 'Repressilator' in synthetic genetic engineering?",
+        options: [
+          "A large mechanical centrifuge used to squeeze DNA",
+          "A synthetic three-gene loop of cyclic negative feedback that produces stable, periodic oscillations of gene expression",
+          "An enzyme that permanently halts transcription across the entire genome",
+          "A virtual computer virus that targets gene databases"
+        ],
+        correctIndex: 1,
+        explanation: "The Repressilator (constructed in E. coli in 2000) is a famous synthetic gene circuit consisting of three genes in a closed loop, where each gene represses the next. This creates a stable, self-sustaining biological clock that oscillates periodic fluorescent signals."
+      }
+    }
+  },
+  {
+    id: "advanced-genomic-sequencing",
+    level: 4,
+    title: "Advanced Genomic Sequencing",
+    subtitle: "Long Reads and Epigenetic Direct-Sensing",
+    shortDesc: "Compare third-generation sequencing platforms like PacBio SMRT and Oxford Nanopore with short-read platforms.",
+    duration: "15 mins",
+    content: {
+      title: "Third-Generation Sequencing: Long Reads and Direct Sensing",
+      paragraphs: [
+        "While next-generation sequencing (NGS) revolutionized biology by reading millions of short fragments (150-300bp) in parallel, it struggles with highly repetitive genomic regions, large structural variants, and resolving complex diploid genomes.",
+        "To overcome these hurdles, third-generation sequencing technologies—predominantly Pacific Biosciences (PacBio) and Oxford Nanopore Technologies (ONT)—were developed. These platforms generate ultra-long reads, ranging from 10,000 to over a million base pairs in a single continuous molecule.",
+        "PacBio utilizes Single-Molecule Real-Time (SMRT) sequencing, observing DNA polymerase activity in zero-mode waveguides (ZMWs) using fluorescent phospholinked nucleotides. Nanopore sequencing, on the other hand, bypasses polymerases and optical detection altogether. It passes a single-stranded DNA molecule through a synthetic protein pore embedded in an electrically resistant membrane. As nucleotides pass through, they block the ionic current in characteristic ways, allowing real-time basecalling directly from electrical disruptions.",
+        "Furthermore, because Oxford Nanopore directly measures raw DNA strands, it can directly detect base modifications—such as 5-methylcytosine (5mC)—without requiring chemical bisulfite conversion, preserving precious sample volumes and epigenetic states."
+      ],
+      learningObjective: "Contrast short-read and long-read sequencing technologies, and explain the physical principles of nanopore electrical current disruption.",
+      keyConcepts: [
+        "Short-read sequencing is highly accurate but fails to map repetitive regions or large structural insertions.",
+        "PacBio SMRT sequencing uses circular consensus sequencing (CCS) to achieve extreme single-molecule accuracy (HiFi reads).",
+        "Nanopore devices detect sequence changes by measuring ionic current blockages as DNA threads through a protein pore."
+      ],
+      interactiveExample: {
+        title: "Long-Read Sequencing Assembly Simulator",
+        description: "Adjust read length and raw error rates to see how they impact genome assembly completeness and contiguous block (N50) scores.",
+        type: "long_read_assembly"
+      },
+      miniActivity: {
+        prompt: "Which sequencing technology detects nucleotides by directly measuring ionic current disruptions through a synthetic membrane pore?",
+        options: ["Sanger Sequencing", "Illumina Sequencing-by-Synthesis", "Oxford Nanopore Technologies (ONT)", "PacBio SMRT Sequencing"],
+        correctAnswer: "Oxford Nanopore Technologies (ONT)",
+        feedback: "Correct! Nanopore devices pass single DNA strands through a membrane pore, monitoring electrical current fluctuations to decode bases."
+      },
+      summary: "Third-generation sequencing provides long reads that resolve complex structural variations and repetitive regions, bypassing amplification biases and directly detecting epigenetic marks.",
+      quickQuiz: {
+        question: "What is the primary advantage of Oxford Nanopore and PacBio SMRT long-reads over Illumina short-reads?",
+        options: [
+          "They are much cheaper per gigabase for small diagnostic test runs",
+          "They can span large structural variants, highly repetitive regions, and long transposable elements to assemble highly contiguous chromosomes",
+          "They have zero raw sequencing errors right off the instrument",
+          "They only require single-stranded RNA templates and cannot read double-stranded DNA"
+        ],
+        correctIndex: 1,
+        explanation: "The primary strength of third-generation long reads is their physical span. Short reads (150bp) cannot bridge repetitive segments (e.g., centromeres or transposons) that are thousands of base pairs long, leaving gaps in draft assemblies. Long reads span these regions completely, resolving complex structural variations."
+      }
+    }
+  },
+  {
+    id: "crispr-cas9-fundamentals",
+    level: 4,
+    title: "CRISPR-Cas9 Fundamentals",
+    subtitle: "Precision Genome Surgery",
+    shortDesc: "Understand the structural biology of the Cas9 endonuclease, the single guide RNA (sgRNA), and PAM recognition rules.",
+    duration: "15 mins",
+    content: {
+      title: "Molecular Mechanisms of CRISPR-Cas9 Target Selection",
+      paragraphs: [
+        "Adapted from a bacterial adaptive immune system, the CRISPR-Cas9 system has revolutionized biotechnology by enabling programmable, double-stranded DNA cleavage inside living organisms.",
+        "The system relies on two core components: the Cas9 endonuclease (the 'molecular scissors') and a single guide RNA (sgRNA). The sgRNA contains a constant scaffold region that binds tightly to Cas9, and a custom 20-nucleotide spacer region that dictates target specificity through base complementarity.",
+        "However, Cas9 will not bind or cleave the target DNA based solely on sgRNA complementarity. It must first scan the DNA for a short, conserved sequence motif called the Protospacer Adjacent Motif (PAM). For the widely used SpCas9 from Streptococcus pyogenes, the PAM sequence is 5'-NGG-3' (where N is any nucleotide, followed by two Guanines).",
+        "Once Cas9 binds a PAM site, it melts the adjacent double helix, allowing the 20bp spacer of the sgRNA to hybridize with the target strand (forming an 'R-loop'). If base pairing is complementary, Cas9's HNH and RuvC endonuclease domains execute a precise double-stranded break (DSB) exactly 3 base pairs upstream of the PAM. This break is then repaired by the host cell's native mechanisms, either by error-prone Non-Homologous End Joining (NHEJ) which introduces knockouts, or Homology-Directed Repair (HDR) which integrates custom templates."
+      ],
+      learningObjective: "Identify CRISPR components, explain the necessity of the PAM sequence, and design target guides with minimal off-target risks.",
+      keyConcepts: [
+        "The sgRNA spacer is a user-customizable 20bp sequence that guides Cas9 to its target.",
+        "The PAM sequence (5'-NGG-3' for SpCas9) is an absolute prerequisite for Cas9 DNA binding and melting.",
+        "Host repair pathways determine the outcome: NHEJ induces random insertions/deletions, whereas HDR inserts a specific edit template."
+      ],
+      interactiveExample: {
+        title: "CRISPR-Cas9 sgRNA Target Designer",
+        description: "Input a candidate genomic sequence to scan for PAM sites (NGG) and isolate functional 20bp guide sequences.",
+        type: "crispr_designer"
+      },
+      miniActivity: {
+        prompt: "For the standard SpCas9 enzyme, which sequence acts as the mandatory Protospacer Adjacent Motif (PAM)?",
+        options: ["5'-AAAA-3'", "5'-TATA-3'", "5'-NGG-3'", "5'-GATC-3'"],
+        correctAnswer: "5'-NGG-3'",
+        feedback: "Correct! Streptococcus pyogenes Cas9 (SpCas9) specifically scans for the 5'-NGG-3' PAM motif to initiate DNA binding."
+      },
+      summary: "CRISPR-Cas9 enables programmable editing. Cas9 identifies target loci via PAM motifs (5'-NGG-3') and hybridizes an sgRNA spacer, causing double-stranded cuts repaired by host machinery.",
+      quickQuiz: {
+        question: "Why is the Protospacer Adjacent Motif (PAM) sequence necessary for Cas9 function?",
+        options: [
+          "It physically acts as the template for repairing the DNA break",
+          "It binds directly to the ribose backbone of the sgRNA to stabilize the complex",
+          "It is the target recognized by the host cell's protein degradation systems",
+          "It acts as a physical license plate allowing Cas9 to bind and unwind the DNA helix, preventing Cas9 from cutting its own bacterial CRISPR array"
+        ],
+        correctIndex: 3,
+        explanation: "The PAM sequence acts as a safety switch. Bacteria store viral memory sequences in their own genomes inside the 'CRISPR array'. Since these arrays do not contain a PAM sequence adjacent to the spacers, Cas9 ignores them, avoiding self-destruction. In target viral or mammalian DNA, the presence of PAM allows Cas9 to bind, unwind, and test for guide RNA complementarity."
+      }
+    }
+  },
+  {
+    id: "proteomics-data-analysis",
+    level: 5,
+    title: "Proteomics Data Analysis",
+    subtitle: "De Novo Peptide Sequencing",
+    shortDesc: "Master the analysis of mass spectrometry (MS/MS) spectra, peptide mass fingerprinting, and sequence database searches.",
+    duration: "15 mins",
+    content: {
+      title: "Mass Spectrometry and Computational Proteomics",
+      paragraphs: [
+        "While genomics reveals what *might* happen in a cell, proteomics—the comprehensive study of all expressed proteins—discloses what is actively occurring. Proteins, however, cannot be easily amplified like DNA, and their structural complexity requires high-resolution analytical tools.",
+        "The standard method for large-scale proteomics is liquid chromatography-tandem mass spectrometry (LC-MS/MS) in a 'bottom-up' workflow. Proteins are first extracted and cleaved into short peptides using a sequence-specific protease, typically trypsin (which cuts after Lysine and Arginine).",
+        "These peptides are separated by liquid chromatography, vaporized, and ionized. Inside the mass spectrometer (MS1), the intact peptides' mass-to-charge (m/z) ratios are measured. High-intensity peptide peaks are then isolated and smashed with inert gas molecules (collision-induced dissociation). This fragments the peptides predominantly along their amide bonds, producing a series of daughter ions.",
+        "The resulting MS/MS (MS2) spectrum reveals the masses of these fragments. Since peptides fragment in a predictable manner—yielding N-terminal b-ions and C-terminal y-ions—the mass difference between adjacent peaks correspond exactly to the molecular weight of individual amino acids, enabling de novo sequence identification or database matching."
+      ],
+      learningObjective: "Interpret tandem mass spectrometry (MS/MS) spectra, calculate peptide charge states, and identify peptide sequences using fragmentation patterns.",
+      keyConcepts: [
+        "LC-MS/MS measures mass-to-charge ratios (m/z) of intact peptides and their fragmented daughter ions.",
+        "Trypsin cleavage cuts proteins after basic residues (Lys, Arg), creating highly predictable peptide ends.",
+        "Differences between adjacent peaks in an MS/MS spectrum indicate the exact molecular weights of sequential amino acids."
+      ],
+      interactiveExample: {
+        title: "Tandem MS/MS Spectrum Solver",
+        description: "Select custom peptide fragments and see how breaking amide bonds creates a sequence of b-ion and y-ion peaks.",
+        type: "ms_spectrum_solver"
+      },
+      miniActivity: {
+        prompt: "Which protease is most commonly used in bottom-up proteomics to cleave proteins after Lysine (K) and Arginine (R) residues?",
+        options: ["Pepsin", "Chymotrypsin", "Trypsin", "Caspase-3"],
+        correctAnswer: "Trypsin",
+        feedback: "Correct! Trypsin is the workhorse enzyme of proteomics, cleaving specifically after basic amino acids to yield positively charged C-termini."
+      },
+      summary: "Proteomics identifies proteins via tandem mass spectrometry. Intact peptides are isolated (MS1), fragmented along amide backbones, and the resulting daughter ion mass differences (MS2) reveal the amino acid sequence.",
+      quickQuiz: {
+        question: "In an MS/MS peptide fragmentation spectrum, how is the sequence of amino acids computationally decoded?",
+        options: [
+          "By matching the fluorescent light color emitted during laser ablation",
+          "By calculating the exact mass differences between adjacent peaks in a b-ion or y-ion series, which correspond to the molecular weights of specific amino acid residues",
+          "By measuring the physical speed at which the protein unfolds",
+          "By counting the number of carbon atoms using nuclear magnetic resonance"
+        ],
+        correctIndex: 1,
+        explanation: "As peptides fragment during collision, they break at successive amide bonds. This produces a ladder of fragments (like y1, y2, y3). Because each step in the ladder differs by exactly one amino acid residue, the mass difference (in Daltons) between adjacent peaks corresponds directly to the mass of that amino acid (e.g., Alanine is 71.04 Da, Glycine is 57.02 Da)."
       }
     }
   }

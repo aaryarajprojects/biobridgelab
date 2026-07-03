@@ -445,8 +445,8 @@ export default function Dashboard({ progress, onResetProgress, onUpdateProfile }
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block">Current Module Level</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {([1, 2, 3, 4] as const).map(num => {
+                <div className="grid grid-cols-5 gap-1.5">
+                  {([1, 2, 3, 4, 5] as const).map(num => {
                     const isActive = progress.learningLevel === num;
                     return (
                       <button
